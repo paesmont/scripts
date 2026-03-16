@@ -2,6 +2,8 @@ package app
 
 import (
 	"context"
+	"os"
+	"path/filepath"
 	"testing"
 
 	tea "github.com/charmbracelet/bubbletea"
@@ -201,6 +203,82 @@ func TestHandleRunningKeysCancelMarksPendingAsSkipped(t *testing.T) {
 	}
 	if updated.lastMessage != "Script interativo em foreground; finalize-o para continuar." {
 		t.Fatalf("unexpected message: %q", updated.lastMessage)
+	}
+}
+
+func TestStartNextInteractiveSetsGuidanceMessage(t *testing.T) {
+	tmp := t.TempDir()
+	scriptPath := filepath.Join(tmp, "interactive.sh")
+	if err := os.WriteFile(scriptPath, []byte("#!/bin/bash\nexit 0\n"), 0o755); err != nil {
+		t.Fatalf("failed to write temp script: %v", err)
+	}
+
+	m := NewModel([]scripts.Script{{ID: "configure-git", Path: scriptPath, Enabled: true, Interactive: true}}, "install.log")
+	m.queue = []int{0}
+
+	cmd := m.startNext()
+
+	if cmd == nil {
+		t.Fatal("expected interactive command to be scheduled")
+	}
+	if m.current != 0 {
+		t.Fatalf("expected current index 0, got %d", m.current)
+	}
+	if m.scripts[0].Status != scripts.StatusRunning {
+		t.Fatalf("expected running status, got %s", m.scripts[0].Status)
+	}
+	if m.lastMessage != "Modo interativo anexado ao terminal. Responda ao prompt abaixo; ao finalizar, a TUI retorna automaticamente." {
+		t.Fatalf("unexpected message: %q", m.lastMessage)
+	}
+}
+
+func TestHandleRunningKeysInteractiveCancelUsesSpecificMessage(t *testing.T) {
+	list := []scripts.Script{
+		{ID: "configure-git", Enabled: true, Interactive: true, Status: scripts.StatusRunning},
+		{ID: "next", Enabled: true, Status: scripts.StatusQueued},
+	}
+	m := NewModel(list, "install.log")
+	m.mode = modeRunning
+	m.current = 0
+	m.queue = []int{0, 1}
+	m.queuePos = 1
+	m.runCancel = func() {}
+
+	updatedModel, cmd := m.handleRunningKeys(tea.KeyMsg{Type: tea.KeyEsc})
+	updated := updatedModel.(Model)
+
+	if cmd != nil {
+		t.Fatal("expected nil command when requesting cancel")
+	}
+	if !updated.cancelRequested {
+		t.Fatal("expected cancelRequested true")
+	}
+	if updated.lastMessage != "Cancelamento solicitado. Se o prompt interativo ainda estiver aberto, finalize-o para voltar ao TUI." {
+		t.Fatalf("unexpected message: %q", updated.lastMessage)
+	}
+}
+
+func TestListRowsInsertCategoryHeaders(t *testing.T) {
+	list := []scripts.Script{
+		{ID: "a", Name: "Alpha", Category: "Base do Sistema"},
+		{ID: "b", Name: "Bravo", Category: "Base do Sistema"},
+		{ID: "c", Name: "Charlie", Category: "Ferramentas Dev"},
+	}
+	m := NewModel(list, "install.log")
+
+	rows := m.listRows()
+
+	if len(rows) != 5 {
+		t.Fatalf("expected 5 rows, got %d", len(rows))
+	}
+	if !rows[0].isHeader || rows[0].category != "Base do Sistema" {
+		t.Fatalf("expected first row to be Base do Sistema header, got %+v", rows[0])
+	}
+	if rows[1].isHeader || rows[1].scriptIndex != 0 {
+		t.Fatalf("expected second row to point to first script, got %+v", rows[1])
+	}
+	if !rows[3].isHeader || rows[3].category != "Ferramentas Dev" {
+		t.Fatalf("expected fourth row to be Ferramentas Dev header, got %+v", rows[3])
 	}
 }
 

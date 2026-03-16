@@ -164,17 +164,17 @@ STEPS=(
 		t.Fatalf("expected 4 scripts, got %d", len(list))
 	}
 
-	if got := filepath.Base(list[0].Path); got != "install-zeta.sh" {
-		t.Fatalf("expected first script install-zeta.sh, got %s", got)
+	if got := filepath.Base(list[0].Path); got != "install-alpha.sh" {
+		t.Fatalf("expected first script install-alpha.sh, got %s", got)
 	}
 	if got := filepath.Base(list[1].Path); got != "install-beta.sh" {
 		t.Fatalf("expected second script install-beta.sh, got %s", got)
 	}
-	if got := filepath.Base(list[2].Path); got != "install-alpha.sh" {
-		t.Fatalf("expected third script install-alpha.sh, got %s", got)
+	if got := filepath.Base(list[2].Path); got != "install-extra.sh" {
+		t.Fatalf("expected third script install-extra.sh, got %s", got)
 	}
-	if got := filepath.Base(list[3].Path); got != "install-extra.sh" {
-		t.Fatalf("expected fourth script install-extra.sh, got %s", got)
+	if got := filepath.Base(list[3].Path); got != "install-zeta.sh" {
+		t.Fatalf("expected fourth script install-zeta.sh, got %s", got)
 	}
 
 	byName := map[string]Script{}
@@ -197,8 +197,11 @@ STEPS=(
 	if !byName["install-extra.sh"].Interactive || !byName["install-extra.sh"].RequiresRoot {
 		t.Fatal("expected install-extra.sh flags from overrides")
 	}
-	if byName["install-extra.sh"].Order != 10000 {
-		t.Fatalf("expected default order 10000 for script outside STEPS, got %d", byName["install-extra.sh"].Order)
+	if byName["install-extra.sh"].Category != "Outros" {
+		t.Fatalf("expected install-extra.sh category Outros, got %q", byName["install-extra.sh"].Category)
+	}
+	if byName["install-zeta.sh"].Category != "Outros" {
+		t.Fatalf("expected install-zeta.sh category Outros, got %q", byName["install-zeta.sh"].Category)
 	}
 }
 
@@ -271,5 +274,41 @@ STEPS=(
 	}
 	if byName["install-user-space.sh"].RequiresRoot {
 		t.Fatal("expected install-user-space.sh to remain user-space")
+	}
+}
+
+func TestDiscoverMarksReadPromptsAsInteractive(t *testing.T) {
+	tmp := t.TempDir()
+	assetsDir := filepath.Join(tmp, "assets")
+	if err := os.MkdirAll(assetsDir, 0o755); err != nil {
+		t.Fatalf("failed creating assets dir: %v", err)
+	}
+
+	installBody := `#!/bin/bash
+STEPS=(
+  "configure-git.sh"
+)
+`
+	if err := os.WriteFile(filepath.Join(tmp, "install.sh"), []byte(installBody), 0o644); err != nil {
+		t.Fatalf("failed writing install.sh: %v", err)
+	}
+
+	scriptBody := `#!/bin/bash
+read -rp "Digite seu email para Git: " git_email
+`
+	if err := os.WriteFile(filepath.Join(assetsDir, "configure-git.sh"), []byte(scriptBody), 0o755); err != nil {
+		t.Fatalf("failed writing asset: %v", err)
+	}
+
+	list, err := Discover(tmp)
+	if err != nil {
+		t.Fatalf("unexpected discover error: %v", err)
+	}
+
+	if len(list) != 1 {
+		t.Fatalf("expected 1 script, got %d", len(list))
+	}
+	if !list[0].Interactive {
+		t.Fatal("expected configure-git.sh to be interactive from read prompt detection")
 	}
 }

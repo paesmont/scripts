@@ -66,10 +66,19 @@ bshln-scripts/
 
 ## Uso da TUI (MVP)
 
+O `bashln-tui` atual opera sobre `scripts/arch`.
+
 Execute a interface TUI a partir da raiz do repositorio:
 
 ```bash
 go run ./cmd/bashln-tui --root ./scripts/arch
+```
+
+Para gerar ou atualizar o binario local:
+
+```bash
+go build -o ./bashln-tui ./cmd/bashln-tui
+./bashln-tui --root ./scripts/arch
 ```
 
 Atalhos principais:
@@ -80,6 +89,11 @@ Atalhos principais:
 - `r`: executar scripts habilitados
 - `esc`/`ctrl+c`: cancelar execucao em andamento
 - `q`: sair
+
+Observacoes:
+
+- Scripts marcados como `interactive` tomam o terminal em foreground temporariamente. Responda ao prompt e a TUI volta ao final.
+- Se o binario `./bashln-tui` se comportar diferente do codigo atual, recompile antes de usar.
 
 Flags disponiveis:
 
@@ -125,6 +139,8 @@ sudo dnf install -y git curl
 # Preview sem executar
 ./system-maintenance.sh --dry-run
 ```
+
+Observacao: o diretorio se chama `scripts/fedora-wsl` por historico, mas atende Fedora nativo e WSL2. Apenas comandos marcados como `[WSL]` dependem de integracao com Windows.
 
 ### Pop!_OS / Ubuntu
 

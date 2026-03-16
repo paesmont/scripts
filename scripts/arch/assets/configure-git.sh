@@ -1,5 +1,6 @@
 #!/bin/bash
 set -euo pipefail
+# TUI_INTERACTIVE: true
 
 source "$(dirname "${BASH_SOURCE[0]}")/../lib/utils.sh"
 
@@ -21,6 +22,19 @@ main() {
 
     read -rp "Digite seu email para Git: " git_email
     read -rp "Digite seu nome para Git: " git_name
+
+    git_email="${git_email//[$'\r\n']}"
+    git_name="${git_name//[$'\r\n']}"
+
+    if [[ -z "${git_email// }" ]]; then
+        error "Email do Git nao pode ficar vazio."
+        return 1
+    fi
+
+    if [[ -z "${git_name// }" ]]; then
+        error "Nome do Git nao pode ficar vazio."
+        return 1
+    fi
 
     git config --global user.email "${git_email}"
     git config --global user.name "${git_name}"

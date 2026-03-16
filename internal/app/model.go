@@ -57,6 +57,8 @@ type uiStyles struct {
 	statusDefault  lipgloss.Style
 	tagInteractive lipgloss.Style
 	tagRoot        lipgloss.Style
+	categoryHeader lipgloss.Style
+	selectedPanel  lipgloss.Style
 	menuItem       lipgloss.Style
 	menuSelected   lipgloss.Style
 }
@@ -100,6 +102,13 @@ type interactiveDoneMsg struct {
 
 type runDoneMsg struct{}
 
+type listRow struct {
+	category    string
+	scriptIndex int
+	isHeader    bool
+	count       int
+}
+
 func NewModel(list []scripts.Script, logPath string) Model {
 	cloned := make([]scripts.Script, len(list))
 	copy(cloned, list)
@@ -134,19 +143,21 @@ func supportsColor() bool {
 func newUIStyles(colorEnabled bool) uiStyles {
 	if !colorEnabled {
 		return uiStyles{
-			mono:          true,
-			header:        lipgloss.NewStyle().Bold(true),
-			footer:        lipgloss.NewStyle().Bold(true),
-			muted:         lipgloss.NewStyle(),
-			cursor:        lipgloss.NewStyle().Bold(true),
-			selected:      lipgloss.NewStyle().Bold(true),
-			statusOK:      lipgloss.NewStyle().Bold(true),
-			statusFailed:  lipgloss.NewStyle().Bold(true),
-			statusWarn:    lipgloss.NewStyle().Bold(true),
-			statusInfo:    lipgloss.NewStyle().Bold(true),
-			statusDefault: lipgloss.NewStyle(),
-			menuItem:      lipgloss.NewStyle(),
-			menuSelected:  lipgloss.NewStyle().Bold(true),
+			mono:           true,
+			header:         lipgloss.NewStyle().Bold(true),
+			footer:         lipgloss.NewStyle().Bold(true),
+			muted:          lipgloss.NewStyle(),
+			cursor:         lipgloss.NewStyle().Bold(true),
+			selected:       lipgloss.NewStyle().Bold(true),
+			statusOK:       lipgloss.NewStyle().Bold(true),
+			statusFailed:   lipgloss.NewStyle().Bold(true),
+			statusWarn:     lipgloss.NewStyle().Bold(true),
+			statusInfo:     lipgloss.NewStyle().Bold(true),
+			statusDefault:  lipgloss.NewStyle(),
+			categoryHeader: lipgloss.NewStyle().Bold(true),
+			selectedPanel:  lipgloss.NewStyle().Bold(true),
+			menuItem:       lipgloss.NewStyle(),
+			menuSelected:   lipgloss.NewStyle().Bold(true),
 		}
 	}
 
@@ -169,6 +180,13 @@ func newUIStyles(colorEnabled bool) uiStyles {
 		tagRoot: lipgloss.NewStyle().
 			Foreground(lipgloss.Color(catppuccinBase)).
 			Background(lipgloss.Color(catppuccinBlue)).
+			Padding(0, 1),
+		categoryHeader: lipgloss.NewStyle().
+			Foreground(lipgloss.Color(catppuccinYellow)).
+			Bold(true),
+		selectedPanel: lipgloss.NewStyle().
+			Border(lipgloss.RoundedBorder()).
+			BorderForeground(lipgloss.Color(catppuccinOverlay)).
 			Padding(0, 1),
 		menuItem: lipgloss.NewStyle().Foreground(lipgloss.Color(catppuccinOverlay)),
 		menuSelected: lipgloss.NewStyle().
@@ -393,21 +411,28 @@ func (m Model) View() string {
 			b.WriteString(m.styles.statusInfo.Render("Mensagem: "+m.lastMessage) + "\n")
 		}
 		b.WriteString("\n")
-		start, end := m.visibleRange()
+		rows := m.listRows()
+		start, end := m.visibleRange(rows)
 		enabledCount := 0
 		for _, s := range m.scripts {
 			if s.Enabled {
 				enabledCount++
 			}
 		}
-		b.WriteString(m.styles.footer.Render(fmt.Sprintf("Scripts habilitados: %d/%d", enabledCount, len(m.scripts))) + "\n")
-		if len(m.scripts) > 0 {
-			b.WriteString(m.styles.muted.Render(fmt.Sprintf("Mostrando: %d-%d de %d", start+1, end, len(m.scripts))) + "\n")
+		categoryCount := len(rows) - len(m.scripts)
+		b.WriteString(m.styles.footer.Render(fmt.Sprintf("Scripts habilitados: %d/%d | Categorias: %d", enabledCount, len(m.scripts), categoryCount)) + "\n")
+		if len(rows) > 0 {
+			b.WriteString(m.styles.muted.Render(fmt.Sprintf("Mostrando linhas: %d-%d de %d", start+1, end, len(rows))) + "\n")
 		}
 		b.WriteString("\n")
 
-		for i := start; i < end; i++ {
-			b.WriteString(m.renderScriptLine(i, m.scripts[i]) + "\n")
+		for _, row := range rows[start:end] {
+			b.WriteString(m.renderListRow(row) + "\n")
+		}
+
+		if selected := m.selectedScript(); selected != nil {
+			b.WriteString("\n")
+			b.WriteString(m.renderSelectedPanel(*selected) + "\n")
 		}
 
 		if m.mode == modeDone {
@@ -423,6 +448,9 @@ func (m Model) View() string {
 		}
 		if m.current >= 0 {
 			b.WriteString(fmt.Sprintf("Atual: %s\n", m.scripts[m.current].ID))
+			if m.scripts[m.current].Interactive {
+				b.WriteString(m.styles.statusWarn.Render("Modo interativo anexado ao terminal: responda ao prompt no shell atual.") + "\n")
+			}
 		}
 		b.WriteString(m.styles.footer.Render(fmt.Sprintf("Progresso: %d/%d", m.queuePos, len(m.queue))) + "\n")
 		b.WriteString("\n" + m.styles.muted.Render("Saida recente:") + "\n")
@@ -454,12 +482,24 @@ func (m Model) renderScriptLine(index int, s scripts.Script) string {
 		enabled = "[x]"
 	}
 
-	line := fmt.Sprintf("%-2s %s %-28s (%s)%s", cursor, enabled, s.ID, m.renderStatus(s.Status), m.renderTags(s))
+	line := fmt.Sprintf("%-2s %s %-28s (%s)%s", cursor, enabled, s.Name, m.renderStatus(s.Status), m.renderTags(s))
 	if index == m.cursor {
 		return m.styles.selected.Render(line)
 	}
 
 	return line
+}
+
+func (m Model) renderListRow(row listRow) string {
+	if row.isHeader {
+		label := fmt.Sprintf(" %s (%d) ", row.category, row.count)
+		if m.styles.mono {
+			return strings.ToUpper(label)
+		}
+		return m.styles.categoryHeader.Render(label)
+	}
+
+	return m.renderScriptLine(row.scriptIndex, m.scripts[row.scriptIndex])
 }
 
 func (m Model) renderStatus(status scripts.Status) string {
@@ -510,6 +550,69 @@ func (m Model) renderTags(s scripts.Script) string {
 	}
 
 	return " " + strings.Join(rendered, " ")
+}
+
+func (m Model) renderSelectedPanel(s scripts.Script) string {
+	enabledStr := "[ ] Não"
+	if s.Enabled {
+		enabledStr = "[x] Sim"
+	}
+	lines := []string{
+		fmt.Sprintf("Selecionado: %s", s.Name),
+		fmt.Sprintf("Categoria: %s", s.Category),
+		fmt.Sprintf("Script: %s", s.ID),
+		fmt.Sprintf("Estado: %s", m.renderStatus(s.Status)),
+		fmt.Sprintf("Habilitado: %s", enabledStr),
+	}
+	if s.RequiresRoot || s.Interactive {
+		lines = append(lines, "Tags:"+m.renderTags(s))
+	}
+	content := strings.Join(lines, "\n")
+	if m.styles.mono {
+		return content
+	}
+	return m.styles.selectedPanel.Render(content)
+}
+
+func (m Model) selectedScript() *scripts.Script {
+	if len(m.scripts) == 0 || m.cursor < 0 || m.cursor >= len(m.scripts) {
+		return nil
+	}
+	return &m.scripts[m.cursor]
+}
+
+func (m Model) listRows() []listRow {
+	if len(m.scripts) == 0 {
+		return nil
+	}
+
+	counts := map[string]int{}
+	for _, s := range m.scripts {
+		counts[s.Category]++
+	}
+
+	rows := make([]listRow, 0, len(m.scripts)+10)
+	current := ""
+	for i, s := range m.scripts {
+		if s.Category != current {
+			current = s.Category
+			rows = append(rows, listRow{category: current, isHeader: true, count: counts[current]})
+		}
+		rows = append(rows, listRow{category: current, scriptIndex: i})
+	}
+	return rows
+}
+
+func (m Model) currentRowIndex(rows []listRow) int {
+	if len(rows) == 0 {
+		return 0
+	}
+	for i, row := range rows {
+		if !row.isHeader && row.scriptIndex == m.cursor {
+			return i
+		}
+	}
+	return 0
 }
 
 func (m Model) handleListKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
@@ -630,7 +733,11 @@ func (m Model) handleRunningKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.markRemainingSkipped()
 		if m.runCancel != nil {
 			m.runCancel()
-			m.lastMessage = "Cancelamento solicitado."
+			if m.current >= 0 && m.current < len(m.scripts) && m.scripts[m.current].Interactive {
+				m.lastMessage = "Cancelamento solicitado. Se o prompt interativo ainda estiver aberto, finalize-o para voltar ao TUI."
+			} else {
+				m.lastMessage = "Cancelamento solicitado."
+			}
 		} else {
 			m.lastMessage = "Script interativo em foreground; finalize-o para continuar."
 		}
@@ -701,6 +808,7 @@ func (m *Model) startNext() tea.Cmd {
 	if script.Interactive {
 		ctx, cancel := context.WithCancel(context.Background())
 		m.runCancel = cancel
+		m.lastMessage = "Modo interativo anexado ao terminal. Responda ao prompt abaixo; ao finalizar, a TUI retorna automaticamente."
 		m.pushOutput(fmt.Sprintf("%s: iniciando modo interativo (attach)", script.ID))
 
 		cmd, err := runner.BuildCommandWithContext(ctx, script, m.logPath)
@@ -761,8 +869,8 @@ func (m *Model) pushOutput(line string) {
 	}
 }
 
-func (m Model) visibleRange() (int, int) {
-	total := len(m.scripts)
+func (m Model) visibleRange(rows []listRow) (int, int) {
+	total := len(rows)
 	if total == 0 {
 		return 0, 0
 	}
@@ -775,7 +883,8 @@ func (m Model) visibleRange() (int, int) {
 		window = total
 	}
 
-	start := m.cursor - (window / 2)
+	currentRow := m.currentRowIndex(rows)
+	start := currentRow - (window / 2)
 	if start < 0 {
 		start = 0
 	}

@@ -21,6 +21,20 @@ var (
 	metaRootRe        = regexp.MustCompile(`(?m)^\s*#\s*TUI_REQUIRES_ROOT\s*:\s*true\s*$`)
 )
 
+var categoryPriority = map[string]int{
+	"Base do Sistema":       0,
+	"Linguagens & Runtimes": 1,
+	"Graficos & Multimedia": 2,
+	"Terminais & Shell":     3,
+	"Rede & Armazenamento":  4,
+	"Navegadores":           5,
+	"Ferramentas Dev":       6,
+	"Aplicacoes":            7,
+	"Flatpak":               8,
+	"Desktop & Hyprland":    9,
+	"Outros":                10,
+}
+
 func Discover(archDir string) ([]Script, error) {
 	installPath := filepath.Join(archDir, "install.sh")
 	orderMap, enabledMap, err := parseSteps(installPath)
@@ -62,6 +76,7 @@ func Discover(archDir string) ([]Script, error) {
 		script := Script{
 			ID:           strings.TrimSuffix(entry.Name(), ".sh"),
 			Name:         defaultName(entry.Name()),
+			Category:     defaultCategory(entry.Name()),
 			Path:         fullPath,
 			Enabled:      enabledMap[entry.Name()],
 			RequiresRoot: requiresRoot,
@@ -74,13 +89,55 @@ func Discover(archDir string) ([]Script, error) {
 	}
 
 	sort.Slice(items, func(i, j int) bool {
-		if items[i].Order != items[j].Order {
-			return items[i].Order < items[j].Order
+		leftCategory := categorySortOrder(items[i].Category)
+		rightCategory := categorySortOrder(items[j].Category)
+		if leftCategory != rightCategory {
+			return leftCategory < rightCategory
+		}
+		leftName := strings.ToLower(items[i].Name)
+		rightName := strings.ToLower(items[j].Name)
+		if leftName != rightName {
+			return leftName < rightName
 		}
 		return filepath.Base(items[i].Path) < filepath.Base(items[j].Path)
 	})
 
 	return items, nil
+}
+
+func categorySortOrder(category string) int {
+	order, ok := categoryPriority[category]
+	if !ok {
+		return categoryPriority["Outros"]
+	}
+	return order
+}
+
+func defaultCategory(fileName string) string {
+	switch fileName {
+	case "install-gum.sh", "install-base-devel.sh", "install-dev-tools.sh", "install-git.sh", "install-stow.sh", "install-yay.sh", "install-curl.sh", "install-unzip.sh", "install-jq.sh", "install-eza.sh", "install-zoxide.sh", "install-linux-toys.sh":
+		return "Base do Sistema"
+	case "install-go-tools.sh", "install-python.sh", "install-python-tools.sh", "install-ruby.sh", "install-rust.sh":
+		return "Linguagens & Runtimes"
+	case "install-fonts.sh", "install-mesa-radeon.sh", "install-vulkan-stack.sh", "install-lib32-libs.sh", "install-libva-utils.sh", "install-gvfs.sh":
+		return "Graficos & Multimedia"
+	case "install-alacritty.sh", "install-kitty.sh", "install-ghostty.sh", "install-tmux.sh", "install-zsh-env.sh", "install-ohmybash-starship.sh", "install-dank-material-shell.sh", "set-shell.sh":
+		return "Terminais & Shell"
+	case "install-ntfs-3g.sh", "install-samba.sh", "autofs.sh", "install-wl-clipboard.sh", "fix-services.sh":
+		return "Rede & Armazenamento"
+	case "install-brave.sh", "install-vivaldi.sh":
+		return "Navegadores"
+	case "install-asdf.sh", "install-cmake.sh", "install-nodejs.sh", "install-npm-global.sh", "install-lsps.sh", "install-lazygit.sh", "install-emacs.sh", "install-neovim.sh", "install-vscode.sh", "install-dotfiles.sh", "configure-git.sh", "install-postgresql.sh":
+		return "Ferramentas Dev"
+	case "install-remmina.sh", "install-vlc.sh", "install-yazi-deps.sh", "install-yazi.sh", "install-steam.sh", "install-wine-stack.sh":
+		return "Aplicacoes"
+	case "install-flatpak-flathub.sh", "install-flatpak-pupgui2.sh", "install-flatpak-spotify.sh", "install-flatpak-microsoft-edge.sh":
+		return "Flatpak"
+	case "install-hyprland-overrides.sh", "install-hyprland-autostart.sh":
+		return "Desktop & Hyprland"
+	default:
+		return "Outros"
+	}
 }
 
 func detectRequiresRoot(scriptName string, body []byte, overrides Overrides) bool {

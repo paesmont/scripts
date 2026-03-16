@@ -2,7 +2,7 @@
 
 Scripts para provisionar um ambiente de desenvolvimento em Fedora Linux.
 
-Funciona em Fedora nativo e no WSL2. Scripts exclusivos de WSL sao marcados com `[WSL]`.
+Funciona em Fedora nativo e no WSL2. O nome do diretorio e historico; scripts exclusivos de WSL sao marcados com `[WSL]`.
 
 ## Estrutura
 
@@ -34,7 +34,7 @@ fedora-wsl/
 
 ## Uso rapido
 
-No Fedora WSL:
+No Fedora nativo ou WSL:
 
 ```bash
 git clone https://github.com/bashln/scripts ~/scripts
@@ -97,7 +97,7 @@ Ou de dentro do WSL:
 ./main.sh wsl mount-drives     # [WSL] listar discos Windows montados
 ```
 
-## WSL vs Fedora generico
+## Fedora nativo vs WSL
 
 Funciona em qualquer Fedora:
 

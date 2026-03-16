@@ -9,7 +9,11 @@
       "Bash(wc:*)",
       "Bash(ls:*)",
       "Bash(find:*)",
-      "Bash(bash -n /run/media/dev/stow/bashln/bashln/gitlab/scripts/scripts/fedora-wsl/main.sh && echo \"syntax ok\")"
+      "Bash(bash -n /run/media/dev/stow/bashln/bashln/gitlab/scripts/scripts/fedora-wsl/main.sh && echo \"syntax ok\")",
+      "Bash(grep:*)",
+      "Bash(git log:*)",
+      "Bash(go vet:*)",
+      "Bash(xargs -I {} basename {})"
     ]
   }
 }

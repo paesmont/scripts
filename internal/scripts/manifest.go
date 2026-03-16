@@ -23,6 +23,7 @@ const (
 type Script struct {
 	ID           string
 	Name         string
+	Category     string
 	Path         string
 	Enabled      bool
 	RequiresRoot bool
@@ -69,7 +70,6 @@ func applyOverrides(script *Script, overrides Overrides) {
 func defaultOverrides() Overrides {
 	return Overrides{
 		Interactive: map[string]bool{
-			"configure-git.sh":      true,
 			"install-postgresql.sh": true,
 		},
 		RequiresRoot: map[string]bool{},
