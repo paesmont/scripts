@@ -39,21 +39,121 @@ Diretorio: `scripts/apt/`
 Diretorio: `scripts/ubuntu-wsl/`
 
 - Bootstrap e setup para WSL com Ubuntu
-- Aplicativo TUI Go (Bubble Tea) para gerenciamento
 - Scripts de instalacao: base, shell, cli-tools, dev-tools, dotfiles
+
+Diretorio: `go/ubuntu-wsl-bootstrap/`
+
+- Aplicativo TUI Go (Bubble Tea) para gerenciamento
 
 ### 4. Fedora WSL
 
-Diretorio: `scripts/fedora-wsl/`
+Diretorio: `go/fedora-wsl-bootstrap/`
 
 - Bootstrap e setup para WSL com Fedora
 - Aplicativo TUI Go (Bubble Tea) para gerenciamento
 - Scripts de instalacao: base, shell, cli-tools, dev-tools, dotfiles
 
+### 5. Fedora Atomic Desktop
+
+Diretorios: `scripts/fedora-atomic-{variant}/` (onde {variant} é bazzite, silverblue, kinoite, nordic)
+
+- Scripts de instalacao para variantes Fedora Atomic/Desktop Imutavel
+- Suporte a detecção automática via VARIANT_ID em /etc/os-release
+
 ---
 
 ## Estrutura de Diretorios
 
+```
+bashln-scripts/
+|
++-- README.md                    # Documentacao principal
++-- project.md                  # Planejamentos e objetivos do projeto
++-- current-state.md            # Estado atual do desenvolvimento
++-- blueprints.md                # Este arquivo
++-- go.mod                      # Modulo Go principal
++-- .prettierrc                 # Configuracao de formatting
+|
++-- cmd/
+|   +-- bashln-tui/            # Aplicativo TUI Go (Bubble Tea) - TUI principal
+|       +-- main.go            # Entry point
+|
++-- go/
+|   +-- ubuntu-wsl-bootstrap/  # TUI Go para Ubuntu WSL
+|   |   +-- main.go
+|   |   +-- model.go
+|   |   +-- views.go
+|   |   +-- commands.go
+|   |
+|   +-- fedora-wsl-bootstrap/  # TUI Go para Fedora WSL
+|       +-- main.go
+|       +-- model.go
+|       +-- views.go
+|       +-- commands.go
+|
++-- internal/                   # Pacotes Go internos
+|   +-- app/                   # Modelo e logica TUI (Bubble Tea)
+|   |   +-- model.go           # Estado da aplicacao
+|   |   +-- distro.go          # Deteccao de distribuicao
+|   |   +-- logrotate.go       # Rotacao de logs
+|   |   +-- model_test.go      # Testes
+|   |
+|   +-- runner/                # Executor de scripts com streaming
+|   |   +-- runner.go
+|   |   +-- runner_test.go
+|   |
+|   +-- scripts/               # Descoberta e manifest de scripts
+|       +-- discovery.go       # Descobrir scripts disponiveis
+|       +-- discovery_test.go
+|       +-- manifest.go        # Definicao de metadata de scripts
+|
++-- docs/
+|   +-- EQUIVALENCES.md         # Tabela comparativa pacman vs dnf
+|   +-- MIGRATION.md            # Guia migracao Arch -> Fedora
+|   +-- planning/               # Documentacao de planejamento
+|
++-- scripts/                    # Scripts organizados por distribuicao (Bash)
+|   +-- arch/                  # Scripts Arch Linux
+|   |   +-- install.sh         # Orquestrador principal
+|   |   +-- update.sh          # Atualizacao
+|   |   +-- full-update.sh     # Atualizacao completa
+|   |   +-- lib/
+|   |   |   +-- utils.sh      # Biblioteca core (pacman/AUR/funcoes de ajudante)
+|   |   +-- assets/
+|   |   |   +-- install-*.sh  # Scripts individuais de instalacao
+|   |   +-- backup_scripts/   # Scripts de backup/legado (movido para antigos/)
+|   |
+|   +-- apt/                   # Scripts Ubuntu/Pop!_OS
+|   |   +-- install.sh        # Instalador principal
+|   |   +-- update.sh         # Atualizacao
+|   |   +-- clean.sh          # Limpeza
+|   |   +-- assets/           # Scripts e dotfiles
+|   |
+|   +-- fedora/                # Scripts Fedora regular (não-Atomic)
+|   |   +-- install.sh        # Instalador principal
+|   |   +-- lib/
+|   |   |   +-- utils.sh      # Biblioteca core (dnf/funcoes de ajudante)
+|   |   +-- assets/
+|   |   |   +-- *.sh          # Scripts individuais
+|   |
+|   +-- fedora-atomic-bazzite/     # Scripts para Fedora Atomic Bazzite
+|   |   +-- install.sh        # Instalador principal
+|   |
+|   +-- fedora-atomic-silverblue/  # Scripts para Fedora Atomic Silverblue
+|   |   +-- install.sh        # Instalador principal
+|   |
+|   +-- fedora-atomic-kinoite/     # Scripts para Fedora Atomic Kinoite
+|   |   +-- install.sh        # Instalador principal
+|   |
+|   +-- fedora-atomic-nordic/      # Scripts para Fedora Atomic Nordic
+|   |   +-- install.sh        # Instalador principal
+|   |
++-- antigos/                   # Arquivos antigos e desatualizados
+|   +-- arch/                 # Scripts Arch antigos
+|   +-- scripts-fedora/       # Scripts Fedora antigos
+|   +-- powershell/           # Scripts PowerShell antigos
+|   +-- wsl-binaries/         # Binarios wsl-bootstrap antigos
+|   +-- automate_trello_to_git/
 ```
 bashln-scripts/
 |
@@ -130,10 +230,10 @@ bashln-scripts/
 | Tecnologia | Descricao                        | Uso                 |
 | ---------- | -------------------------------- | ------------------- |
 | pacman     | Gerenciador Arch                 | scripts/arch        |
-| dnf        | Gerenciador Fedora               | scripts/fedora-wsl  |
+| dnf        | Gerenciador Fedora               | scripts/fedora      |
 | yay/paru   | AUR Helper                       | scripts/arch        |
-| copr       | Repositorios comunitarios Fedora | scripts/fedora-wsl      |
-| rpmfusion  | Repositorio extras Fedora        | scripts/fedora-wsl      |
+| copr       | Repositorios comunitarios Fedora | scripts/fedora-wsl/antigos/ |
+| rpmfusion  | Repositorio extras Fedora        | scripts/fedora-wsl/antigos/ |
 | flatpak    | Empacotamento universal          | Ambas distribuicoes |
 
 ### Ferramentas TUI
@@ -141,7 +241,7 @@ bashln-scripts/
 | Ferramenta  | Descricao                        | Uso                                 |
 | ----------- | -------------------------------- | ----------------------------------- |
 | Bubble Tea  | Framework TUI em Go              | cmd/bashln-tui (principal)         |
-| Bubble Tea  | Framework TUI em Go              | scripts/*-wsl/bootstrap-go (WSL)   |
+| Bubble Tea  | Framework TUI em Go              | go/*-wsl-bootstrap/ (WSL)          |
 
 ### Ferramentas de Container
 
@@ -399,10 +499,68 @@ MIT License - Use, modifique e compartilhe livremente.
 
 ---
 
-## Estatisticas
+## Fedora Atomic Desktop Support (Current State)
+
+### Visao Geral
+
+Suporte para detecção e execução de scripts em variantes Fedora Atomic Desktop (Bazzite, Silverblue, Kinoite, Nordic) integrado ao mecanismo existente de detecção de distribuição.
+
+### Estado Atual
+
+1. **Detecção de Variantes**: O sistema detecta VARIANT_ID em /etc/os-release e mapeia para diretórios específicos:
+   - `bazzite` → `scripts/fedora-atomic-bazzite/`
+   - `silverblue` → `scripts/fedora-atomic-silverblue/`
+   - `kinoite` → `scripts/fedora-atomic-kinoite/`
+   - `nordic` → `scripts/fedora-atomic-nordic/`
+
+2. **Scripts Disponíveis**: Cada variante tem `install.sh` funcional e `lib/utils.sh` (copiado de `scripts/fedora/lib/`).
+
+3. **Integração**: A detecção é feita pelo bashln-tui existente através de `resolveScriptsDir()` em `cmd/bashln-tui/main.go`.
+
+### Estrutura de Diretorios Atual
+
+```
+scripts/
+|   +-- arch/                  # Scripts Arch Linux
+|   +-- apt/                   # Scripts Ubuntu/Pop!_OS
+|   +-- fedora/                # Scripts Fedora regular
+|   |
+|   +-- fedora-atomic-bazzite/
+|   |   +-- install.sh         # Instalador principal
+|   |   +-- lib/utils.sh       # Biblioteca core (copiada de scripts/fedora/lib/)
+|   |
+|   +-- fedora-atomic-silverblue/
+|   |   +-- install.sh
+|   |   +-- lib/utils.sh
+|   |
+|   +-- fedora-atomic-kinoite/
+|   |   +-- install.sh
+|   |   +-- lib/utils.sh
+|   |
+|   +-- fedora-atomic-nordic/
+|       +-- install.sh
+|       +-- lib/utils.sh
+```
+
+### Implementacao Realizada
+
+- `lib/utils.sh` criado em cada variante (copiado de `scripts/fedora/lib/utils.sh`)
+- `install.sh` corrigido: variável `$variant` agora extraída do nome do diretório (remove prefixo `fedora-atomic-`)
+- Funções `detectSystemDistro()` e `detectSystemVariant()` refatoradas em helper compartilhado `getOSReleaseValue()` em `cmd/bashln-tui/main.go`
+- Diretórios `assets/` vazios removidos de todas as variantes
+
+### Proximos Passos Planeados (Conforme Blueprint Original)
+
+A implementação atual representa a "Fase 1: Fundação". Os próximos passos incluem:
+1. Criação de TUI dedicada `cmd/fedora-atomic-tui/`
+2. Implementação de gerenciadores de pacote (Flatpak, Homebrew, etc.)
+3. Desenvolvimento de orquestrador com lógica de prioridade Bazzite
+4. Adição de funcionalidade real aos scripts de instalação (atualmente placeholders)
+
+### Metricas
 
 - **~70 scripts de instalacao** no directorio assets (Arch)
 - **~40 scripts de instalacao** no directorio assets (Ubuntu/Pop!_OS)
-- **4 distribuicoes suportadas**: Arch, Ubuntu, Ubuntu WSL, Fedora WSL
-- **2 implementacoes TUI em Go**: cmd/bashln-tui e scripts/*-wsl/bootstrap-go
-- **Invariantes**: Nao definidos
+- **5 distribuicoes suportadas**: Arch, Ubuntu, Fedora, Fedora Atomic, Ubuntu WSL
+- **1 implementacao TUI em Go**: cmd/bashln-tui (principal)
+- **Planejado**: fedora-atomic-tui (nova TUI para Fedora Atomic)

@@ -81,23 +81,6 @@ func resolveRoot(rootFlag string) string {
 	return cwd
 }
 
-// detectSystemDistro reads /etc/os-release and returns the distro ID
-func detectSystemDistro() string {
-	data, err := os.ReadFile("/etc/os-release")
-	if err != nil {
-		return ""
-	}
-
-	lines := strings.Split(string(data), "\n")
-	for _, line := range lines {
-		if value, ok := osReleaseValue(line, "ID"); ok {
-			return value
-		}
-	}
-
-	return ""
-}
-
 // osReleaseValue extracts a value from /etc/os-release line
 func osReleaseValue(line, key string) (string, bool) {
 	prefix := key + "="
@@ -113,6 +96,33 @@ func osReleaseValue(line, key string) (string, bool) {
 	return value, true
 }
 
+// getOSReleaseValue reads /etc/os-release and returns the value for the given key
+func getOSReleaseValue(key string) string {
+	data, err := os.ReadFile("/etc/os-release")
+	if err != nil {
+		return ""
+	}
+
+	lines := strings.Split(string(data), "\n")
+	for _, line := range lines {
+		if value, ok := osReleaseValue(line, key); ok {
+			return value
+		}
+	}
+
+	return ""
+}
+
+// detectSystemDistro reads /etc/os-release and returns the distro ID
+func detectSystemDistro() string {
+	return getOSReleaseValue("ID")
+}
+
+// detectSystemVariant reads /etc/os-release and returns the variant ID
+func detectSystemVariant() string {
+	return getOSReleaseValue("VARIANT_ID")
+}
+
 func resolveScriptsDir(root string) (string, error) {
 	// First, check if the given root is a valid script directory (has install.sh and assets)
 	installPath := filepath.Join(root, "install.sh")
@@ -126,12 +136,26 @@ func resolveScriptsDir(root string) (string, error) {
 
 	// Detectar distro do sistema
 	distroID := detectSystemDistro()
+	variantID := detectSystemVariant()
 
 	// Mapear distro para diretório de scripts
 	var scriptDir string
 	switch distroID {
 	case "fedora", "rhel", "centos", "rocky", "almalinux":
-		scriptDir = "scripts/fedora"
+		// Check for Fedora Atomic variants
+		switch variantID {
+		case "bazzite":
+			scriptDir = "scripts/fedora-atomic-bazzite"
+		case "silverblue":
+			scriptDir = "scripts/fedora-atomic-silverblue"
+		case "kinoite":
+			scriptDir = "scripts/fedora-atomic-kinoite"
+		case "nordic":
+			scriptDir = "scripts/fedora-atomic-nordic"
+		default:
+			// Regular Fedora-based distro
+			scriptDir = "scripts/fedora"
+		}
 	case "ubuntu", "debian", "linuxmint", "pop":
 		scriptDir = "scripts/apt"
 	case "arch", "manjaro", "endeavouros", "artix":
