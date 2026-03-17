@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"sync"
 	"syscall"
 	"time"
@@ -36,10 +37,19 @@ const cancelGracePeriod = 1500 * time.Millisecond
 // buildArgs returns the executable name, arguments, and optional environment
 // for a script invocation. Shared by BuildCommand and BuildCommandWithContext.
 func buildArgs(script scripts.Script, logPath string) (name string, args []string, env []string) {
-	if script.RequiresRoot {
-		return "sudo", []string{"--preserve-env=LOG_FILE", "LOG_FILE=" + logPath, "bash", script.Path}, nil
+	extraEnv := []string{"LOG_FILE=" + logPath}
+	if len(script.SkipPackages) > 0 {
+		extraEnv = append(extraEnv, "BASHLN_SKIP_PACKAGES="+strings.Join(script.SkipPackages, ","))
 	}
-	return "bash", []string{script.Path}, append(os.Environ(), "LOG_FILE="+logPath)
+
+	if script.RequiresRoot {
+		preserve := "--preserve-env=LOG_FILE,BASHLN_SKIP_PACKAGES"
+		args := []string{preserve}
+		args = append(args, extraEnv...)
+		args = append(args, "bash", script.Path)
+		return "sudo", args, nil
+	}
+	return "bash", []string{script.Path}, append(os.Environ(), extraEnv...)
 }
 
 func BuildCommand(script scripts.Script, logPath string) (*exec.Cmd, error) {

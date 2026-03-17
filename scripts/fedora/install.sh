@@ -1,10 +1,11 @@
 #!/usr/bin/env bash
 # =============================================================================
-# install.sh - Orquestrador para WSL (Fedora/Ubuntu)
-# Detecta automaticamente a distro e aplica a configuração apropriada
+# install.sh - Orquestrador para Fedora (metal/WSL)
 # =============================================================================
 
 set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 detect_distro() {
     if [ -f /etc/os-release ]; then
@@ -16,12 +17,8 @@ detect_distro() {
 }
 
 validate_steps() {
-    local distro="$1"
     for step in "${STEPS[@]}"; do
-        if [ "$step" = "# bootstrap.sh" ]; then
-            continue
-        fi
-        if [ ! -f "$step" ]; then
+        if [ ! -f "$SCRIPT_DIR/assets/$step" ]; then
             echo "Error: Missing step file: $step"
             exit 1
         fi
@@ -32,11 +29,8 @@ run_steps() {
     local distro="$1"
     export distro
     for step in "${STEPS[@]}"; do
-        if [ "$step" = "# bootstrap.sh" ]; then
-            continue
-        fi
         echo "Running $step..."
-        source "$step"
+        source "$SCRIPT_DIR/assets/$step"
     done
 }
 
@@ -50,17 +44,17 @@ main() {
     STEPS=(
       base.sh
       shell.sh
+      # shell-default-fish.sh
       cli-tools.sh
       dev-tools.sh
       terminal.sh
       dotfiles.sh
-      # bootstrap.sh  # instala distro no WSL (rodar no Windows antes)
     )
     
     validate_steps "$distro"
     run_steps "$distro"
     
-    echo "WSL setup complete!"
+    echo "Fedora setup complete!"
 }
 
 main "$@"

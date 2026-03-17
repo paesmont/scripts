@@ -216,6 +216,7 @@ func TestDiscoverDetectsRequiresRootByPriority(t *testing.T) {
 STEPS=(
   "install-meta.sh"
   "install-python-tools.sh"
+  "install-sudo-selfcheck.sh"
   "install-ensure.sh"
   "install-requires-root.sh"
   "install-user-space.sh"
@@ -234,12 +235,13 @@ STEPS=(
 	}
 
 	files := map[string]string{
-		"install-meta.sh":          "#!/bin/bash\n# TUI_REQUIRES_ROOT: true\n",
-		"install-python-tools.sh":  "#!/bin/bash\nsudo pacman -Syy\n",
-		"install-ensure.sh":        "#!/bin/bash\nensure_package git\n",
-		"install-requires-root.sh": "#!/bin/bash\nREQUIRES_ROOT=1\n",
-		"install-user-space.sh":    "#!/bin/bash\n# npm -g funciona sem sudo aqui\npipx ensurepath\n",
-		"install-override-only.sh": "#!/bin/bash\necho no-root-hint\n",
+		"install-meta.sh":           "#!/bin/bash\n# TUI_REQUIRES_ROOT: true\n",
+		"install-python-tools.sh":   "#!/bin/bash\nsudo pacman -Syy\n",
+		"install-sudo-selfcheck.sh": "#!/bin/bash\ncheck_root\nsudo dnf install -y fish\n",
+		"install-ensure.sh":         "#!/bin/bash\nensure_package git\n",
+		"install-requires-root.sh":  "#!/bin/bash\nREQUIRES_ROOT=1\n",
+		"install-user-space.sh":     "#!/bin/bash\n# npm -g funciona sem sudo aqui\npipx ensurepath\n",
+		"install-override-only.sh":  "#!/bin/bash\necho no-root-hint\n",
 	}
 	for name, body := range files {
 		if err := os.WriteFile(filepath.Join(assetsDir, name), []byte(body), 0o755); err != nil {
@@ -274,6 +276,9 @@ STEPS=(
 	}
 	if byName["install-user-space.sh"].RequiresRoot {
 		t.Fatal("expected install-user-space.sh to remain user-space")
+	}
+	if byName["install-sudo-selfcheck.sh"].RequiresRoot {
+		t.Fatal("expected install-sudo-selfcheck.sh to remain user-space due to check_root")
 	}
 }
 

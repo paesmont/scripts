@@ -72,15 +72,31 @@ if ! has_command yazi; then
     yazi_version="0.3.0"
     arch="$(uname -m)"
     yazi_arch="${arch}-unknown-linux-gnu"
-    
-    if wget -q "https://github.com/sxyazi/yazi/releases/download/v${yazi_version}/yazi-${yazi_arch}.zip" -O /tmp/yazi.zip; then
-        if unzip -q /tmp/yazi.zip -d /tmp/yazi; then
-            if sudo mv /tmp/yazi/yazi /usr/local/bin/ && sudo mv /tmp/yazi/ya /usr/local/bin/; then
-                rm -rf /tmp/yazi /tmp/yazi.zip
-                ok "yazi instalado"
+
+    yazi_tmp="$(mktemp -d /tmp/yazi.XXXXXX)"
+    if wget -q "https://github.com/sxyazi/yazi/releases/download/v${yazi_version}/yazi-${yazi_arch}.zip" -O "${yazi_tmp}/yazi.zip"; then
+        if unzip -q "${yazi_tmp}/yazi.zip" -d "${yazi_tmp}"; then
+            shopt -s nullglob globstar
+            yazi_candidates=("${yazi_tmp}"/**/yazi)
+            ya_candidates=("${yazi_tmp}"/**/ya)
+            shopt -u nullglob globstar
+
+            if [[ ${#yazi_candidates[@]} -gt 0 && ${#ya_candidates[@]} -gt 0 ]]; then
+                if sudo install -m 0755 "${yazi_candidates[0]}" /usr/local/bin/yazi && sudo install -m 0755 "${ya_candidates[0]}" /usr/local/bin/ya; then
+                    ok "yazi instalado"
+                else
+                    log_error "Falha ao instalar binários do yazi em /usr/local/bin"
+                fi
+            else
+                log_error "Binários do yazi não encontrados no zip baixado"
             fi
+        else
+            log_error "Falha ao extrair yazi"
         fi
+    else
+        log_error "Falha ao baixar yazi"
     fi
+    rm -rf "${yazi_tmp}"
 fi
 
 info "Instalando lazygit..."

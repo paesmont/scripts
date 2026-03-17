@@ -16,6 +16,9 @@ var (
 	requiresRootRe    = regexp.MustCompile(`(?m)^REQUIRES_ROOT=1\s*$`)
 	sudoUsageRe       = regexp.MustCompile(`(?m)\bsudo\b`)
 	ensureRootCallRe  = regexp.MustCompile(`(?m)\b(ensure_package|ensure_aur_package|ensure_copr_package|ensure_group|ensure_rpmfusion)\b`)
+	checkRootCallRe   = regexp.MustCompile(`(?m)\bcheck_root\b`)
+	ensurePkgCallRe   = regexp.MustCompile(`\bensure_pkg\s+([a-zA-Z0-9+._-]+)\b`)
+	packagesMetaRe    = regexp.MustCompile(`^\s*#\s*TUI_PACKAGES\s*:\s*(.+?)\s*$`)
 	interactiveHint   = regexp.MustCompile(`(?m)(\bread\b|--interactive|gum\s+(input|confirm|choose|filter|file)|\bfzf\b|\bwhiptail\b|\bdialog\b|\bselect\s+)`)
 	metaInteractiveRe = regexp.MustCompile(`(?m)^\s*#\s*TUI_INTERACTIVE\s*:\s*true\s*$`)
 	metaRootRe        = regexp.MustCompile(`(?m)^\s*#\s*TUI_REQUIRES_ROOT\s*:\s*true\s*$`)
@@ -72,12 +75,15 @@ func Discover(archDir string) ([]Script, error) {
 
 		requiresRoot := detectRequiresRoot(entry.Name(), body, overrides)
 		interactive := interactiveHint.Match(body) || metaInteractiveRe.Match(body)
+		packages := extractPackages(body)
 
 		script := Script{
 			ID:           strings.TrimSuffix(entry.Name(), ".sh"),
 			Name:         defaultName(entry.Name()),
+			Description:  extractDescription(entry.Name(), body),
 			Category:     defaultCategory(entry.Name()),
 			Path:         fullPath,
+			Packages:     packages,
 			Enabled:      enabledMap[entry.Name()],
 			RequiresRoot: requiresRoot,
 			Interactive:  interactive,
@@ -117,17 +123,23 @@ func defaultCategory(fileName string) string {
 	switch fileName {
 	case "install-gum.sh", "install-base-devel.sh", "install-dev-tools.sh", "install-git.sh", "install-stow.sh", "install-yay.sh", "install-curl.sh", "install-unzip.sh", "install-jq.sh", "install-eza.sh", "install-zoxide.sh", "install-linux-toys.sh":
 		return "Base do Sistema"
+	case "base.sh", "cli-tools.sh":
+		return "Base do Sistema"
 	case "install-go-tools.sh", "install-python.sh", "install-python-tools.sh", "install-ruby.sh", "install-rust.sh":
 		return "Linguagens & Runtimes"
 	case "install-fonts.sh", "install-mesa-radeon.sh", "install-vulkan-stack.sh", "install-lib32-libs.sh", "install-libva-utils.sh", "install-gvfs.sh":
 		return "Graficos & Multimedia"
 	case "install-alacritty.sh", "install-kitty.sh", "install-ghostty.sh", "install-tmux.sh", "install-zsh-env.sh", "install-ohmybash-starship.sh", "install-dank-material-shell.sh", "set-shell.sh":
 		return "Terminais & Shell"
+	case "shell.sh", "shell-default-fish.sh", "terminal.sh":
+		return "Terminais & Shell"
 	case "install-ntfs-3g.sh", "install-samba.sh", "autofs.sh", "install-wl-clipboard.sh", "fix-services.sh":
 		return "Rede & Armazenamento"
 	case "install-brave.sh", "install-vivaldi.sh":
 		return "Navegadores"
 	case "install-asdf.sh", "install-cmake.sh", "install-nodejs.sh", "install-npm-global.sh", "install-lsps.sh", "install-lazygit.sh", "install-emacs.sh", "install-neovim.sh", "install-vscode.sh", "install-dotfiles.sh", "configure-git.sh", "install-postgresql.sh":
+		return "Ferramentas Dev"
+	case "dev-tools.sh", "dotfiles.sh":
 		return "Ferramentas Dev"
 	case "install-remmina.sh", "install-vlc.sh", "install-yazi-deps.sh", "install-yazi.sh", "install-steam.sh", "install-wine-stack.sh":
 		return "Aplicacoes"
@@ -151,6 +163,12 @@ func detectRequiresRoot(scriptName string, body []byte, overrides Overrides) boo
 
 	bodyWithoutComments := stripCommentOnlyLines(body)
 
+	// Scripts that explicitly call check_root are designed to run as normal user
+	// and escalate specific commands with sudo when needed.
+	if checkRootCallRe.Match(bodyWithoutComments) {
+		return false
+	}
+
 	if sudoUsageRe.Match(bodyWithoutComments) {
 		return true
 	}
@@ -160,6 +178,98 @@ func detectRequiresRoot(scriptName string, body []byte, overrides Overrides) boo
 	}
 
 	return requiresRootRe.Match(body)
+}
+
+func extractDescription(fileName string, body []byte) string {
+	lines := strings.Split(string(body), "\n")
+	for _, line := range lines {
+		trimmed := strings.TrimSpace(line)
+		if !strings.HasPrefix(trimmed, "#") {
+			continue
+		}
+		trimmed = strings.TrimSpace(strings.TrimPrefix(trimmed, "#"))
+		if strings.Contains(trimmed, " - ") {
+			parts := strings.SplitN(trimmed, " - ", 2)
+			if len(parts) == 2 {
+				desc := strings.TrimSpace(parts[1])
+				if desc != "" {
+					return desc
+				}
+			}
+		}
+	}
+
+	return defaultName(fileName)
+}
+
+func extractPackages(body []byte) []string {
+	lines := strings.Split(string(body), "\n")
+	seen := map[string]bool{}
+	packages := make([]string, 0, 16)
+
+	addPkg := func(pkg string) {
+		pkg = strings.TrimSpace(pkg)
+		pkg = strings.Trim(pkg, "\"'")
+		if pkg == "" || strings.HasPrefix(pkg, "$") || seen[pkg] {
+			return
+		}
+		seen[pkg] = true
+		packages = append(packages, pkg)
+	}
+
+	collectFromInstallList := false
+	for _, line := range lines {
+		trimmed := strings.TrimSpace(line)
+		if trimmed == "" {
+			continue
+		}
+
+		if meta := packagesMetaRe.FindStringSubmatch(trimmed); len(meta) == 2 {
+			for _, pkg := range strings.Split(meta[1], ",") {
+				addPkg(pkg)
+			}
+			continue
+		}
+
+		if strings.HasPrefix(trimmed, "#") {
+			continue
+		}
+
+		if strings.HasPrefix(trimmed, "install_list") {
+			collectFromInstallList = true
+			rest := strings.TrimSpace(strings.TrimPrefix(trimmed, "install_list"))
+			rest = strings.TrimSuffix(rest, "\\")
+			if rest != "" {
+				for _, token := range strings.Fields(rest) {
+					addPkg(token)
+				}
+			}
+			continue
+		}
+
+		if collectFromInstallList {
+			if strings.HasPrefix(trimmed, ";;") || strings.HasPrefix(trimmed, "fi") || strings.Contains(trimmed, "(") {
+				collectFromInstallList = false
+				continue
+			}
+			t := strings.TrimSuffix(trimmed, "\\")
+			for _, token := range strings.Fields(t) {
+				addPkg(token)
+			}
+			if !strings.HasSuffix(trimmed, "\\") {
+				collectFromInstallList = false
+			}
+			continue
+		}
+
+		for _, match := range ensurePkgCallRe.FindAllStringSubmatch(trimmed, -1) {
+			if len(match) == 2 {
+				addPkg(match[1])
+			}
+		}
+	}
+
+	return packages
 }
 
 func stripCommentOnlyLines(body []byte) []byte {

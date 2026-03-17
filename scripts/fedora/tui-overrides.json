@@ -1,0 +1,7 @@
+{
+  "interactive": [
+    "install-postgresql.sh"
+  ],
+  "requires_root": [],
+  "skip_packages": {}
+}

@@ -13,7 +13,7 @@ info "Instalando Fish..."
 if ! has_command fish; then
     case "$PKG_MANAGER" in
         dnf)
-            if sudo dnf install -y fish util-linux-user; then
+            if ensure_pkg fish && ensure_pkg util-linux-user; then
                 ok "Fish instalado"
             else
                 log_error "Falha ao instalar Fish via dnf"
@@ -21,7 +21,7 @@ if ! has_command fish; then
             fi
             ;;
         apt)
-            if sudo apt-get install -y fish; then
+            if ensure_pkg fish; then
                 ok "Fish instalado"
             else
                 log_error "Falha ao instalar Fish via apt"
@@ -35,24 +35,27 @@ fi
 
 info "Instalando Starship..."
 if ! has_command starship; then
-    curl -sS https://starship.rs/install.sh | sh -s -- -y
-    ok "Starship instalado"
+    if ensure_pkg starship 2>/dev/null; then
+        ok "Starship instalado via repositório"
+    else
+        mkdir -p "$HOME/.local/bin"
+        if curl -sS https://starship.rs/install.sh | sh -s -- -y -b "$HOME/.local/bin"; then
+            ok "Starship instalado em $HOME/.local/bin"
+        else
+            log_error "Falha ao instalar Starship"
+        fi
+    fi
 else
     info "Starship já instalado"
 fi
 
-info "Configurando Fish como shell padrão..."
-if [[ "$SHELL" != *"fish"* ]]; then
-    FISH_PATH="$(which fish 2>/dev/null)"
-    if [[ -n "$FISH_PATH" ]]; then
-        if chsh -s "$FISH_PATH"; then
-            ok "Fish configurado como shell padrão"
-        else
-            log_warn "Não foi possível alterar o shell padrão"
-        fi
-    else
-        log_warn "Caminho do Fish não encontrado"
-    fi
+mkdir -p ~/.config/fish/conf.d
+if [[ ! -f ~/.config/fish/conf.d/local-bin.fish ]]; then
+    cat >~/.config/fish/conf.d/local-bin.fish <<'EOF'
+if test -d "$HOME/.local/bin"
+  fish_add_path -g "$HOME/.local/bin"
+end
+EOF
 fi
 
 info "Instalando Fisher (gerenciador de plugins Fish)..."

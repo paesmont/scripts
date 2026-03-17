@@ -24,6 +24,7 @@ const (
 	modeSettings mode = "settings"
 	modeRunning  mode = "running"
 	modeDone     mode = "done"
+	modePkgEdit  mode = "pkg-edit"
 )
 
 const (
@@ -88,6 +89,9 @@ type Model struct {
 	styles          uiStyles
 	archPath        string
 	distroName      string
+	overridePath    string
+	overrides       scripts.Overrides
+	packageCursor   int
 }
 
 type streamEventMsg struct {
@@ -115,6 +119,17 @@ func NewModel(list []scripts.Script, logPath string) Model {
 
 	colorEnabled := supportsColor()
 
+	archPath := filepath.Dir(logPath)
+	overridePath := filepath.Join(archPath, "tui-overrides.json")
+	overrides, err := scripts.LoadOverrides(overridePath)
+	if err != nil {
+		overrides = scripts.Overrides{
+			Interactive:  map[string]bool{},
+			RequiresRoot: map[string]bool{},
+			SkipPackages: map[string][]string{},
+		}
+	}
+
 	return Model{
 		scripts:         cloned,
 		mode:            modeMainMenu,
@@ -126,8 +141,10 @@ func NewModel(list []scripts.Script, logPath string) Model {
 		outputLimit:     outputLimitFromEnv(),
 		cancelRequested: false,
 		styles:          newUIStyles(colorEnabled),
-		archPath:        filepath.Dir(logPath),
+		archPath:        archPath,
 		distroName:      detectDistro(),
+		overridePath:    overridePath,
+		overrides:       overrides,
 	}
 }
 
@@ -266,6 +283,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m.handleMainMenuKeys(msg)
 		case modeList, modeDone:
 			return m.handleListKeys(msg)
+		case modePkgEdit:
+			return m.handlePackageKeys(msg)
 		case modeSettings:
 			return m.handleSettingsKeys(msg)
 		case modeRunning:
@@ -400,12 +419,13 @@ func (m Model) View() string {
 	case modeSettings:
 		b.WriteString(m.styles.header.Render("Configuracoes") + "\n")
 		b.WriteString(m.styles.muted.Render("Controles: esc voltar | q sair") + "\n\n")
-		b.WriteString("Path scripts/arch: " + m.archPath + "\n")
+		b.WriteString("Path scripts ativo: " + m.archPath + "\n")
 		b.WriteString("Distro detectada: " + m.distroName + "\n")
+		b.WriteString("Overrides: " + m.overridePath + "\n")
 
 	case modeList, modeDone:
 		b.WriteString(m.styles.muted.Render("Controles: j/k/setas navegar | pgup/b pgdown/f paginar | home/g end/G topo/fim") + "\n")
-		b.WriteString(m.styles.muted.Render("Acoes: espaco/enter toggle | a toggle all | r executar | q sair") + "\n")
+		b.WriteString(m.styles.muted.Render("Acoes: espaco/enter toggle | a toggle all | p pacotes | r executar | q sair") + "\n")
 		b.WriteString(m.styles.muted.Render("Voltar: esc menu inicial") + "\n")
 		if m.lastMessage != "" {
 			b.WriteString(m.styles.statusInfo.Render("Mensagem: "+m.lastMessage) + "\n")
@@ -439,6 +459,15 @@ func (m Model) View() string {
 			b.WriteString("\n")
 			b.WriteString(m.styles.footer.Render(fmt.Sprintf("Resultado: %d sucesso(s), %d falha(s), %d cancelado(s)", m.successCount, m.failureCount, m.canceledCount)) + "\n")
 		}
+
+	case modePkgEdit:
+		b.WriteString(m.styles.header.Render("Editar Pacotes") + "\n")
+		b.WriteString(m.styles.muted.Render("Controles: j/k navegar | espaco/enter alternar pacote | a alternar todos | esc voltar") + "\n")
+		if m.lastMessage != "" {
+			b.WriteString(m.styles.statusInfo.Render("Mensagem: "+m.lastMessage) + "\n")
+		}
+		b.WriteString("\n")
+		b.WriteString(m.renderPackageEditor() + "\n")
 
 	case modeRunning:
 		b.WriteString(m.styles.header.Render("Executando fila") + "\n")
@@ -561,17 +590,77 @@ func (m Model) renderSelectedPanel(s scripts.Script) string {
 		fmt.Sprintf("Selecionado: %s", s.Name),
 		fmt.Sprintf("Categoria: %s", s.Category),
 		fmt.Sprintf("Script: %s", s.ID),
+		fmt.Sprintf("Descricao: %s", s.Description),
 		fmt.Sprintf("Estado: %s", m.renderStatus(s.Status)),
 		fmt.Sprintf("Habilitado: %s", enabledStr),
 	}
+	if len(s.Packages) > 0 {
+		preview := strings.Join(s.Packages, ", ")
+		if len(preview) > 90 {
+			preview = preview[:90] + "..."
+		}
+		lines = append(lines, fmt.Sprintf("Pacotes (%d): %s", len(s.Packages), preview))
+	}
+	if len(s.SkipPackages) > 0 {
+		lines = append(lines, "Ignorados: "+strings.Join(s.SkipPackages, ", "))
+	}
 	if s.RequiresRoot || s.Interactive {
 		lines = append(lines, "Tags:"+m.renderTags(s))
+	}
+	if len(s.Packages) > 0 {
+		lines = append(lines, "Dica: pressione 'p' para personalizar pacotes")
 	}
 	content := strings.Join(lines, "\n")
 	if m.styles.mono {
 		return content
 	}
 	return m.styles.selectedPanel.Render(content)
+}
+
+func (m Model) renderPackageEditor() string {
+	if len(m.scripts) == 0 || m.cursor < 0 || m.cursor >= len(m.scripts) {
+		return "Nenhum script selecionado."
+	}
+
+	s := m.scripts[m.cursor]
+	if len(s.Packages) == 0 {
+		return fmt.Sprintf("Script %s nao expoe pacotes detectaveis.", s.Name)
+	}
+
+	if m.packageCursor < 0 {
+		m.packageCursor = 0
+	}
+	if m.packageCursor >= len(s.Packages) {
+		m.packageCursor = len(s.Packages) - 1
+	}
+
+	skipped := map[string]bool{}
+	for _, pkg := range s.SkipPackages {
+		skipped[pkg] = true
+	}
+
+	var b strings.Builder
+	b.WriteString(fmt.Sprintf("Script: %s\n", s.Name))
+	b.WriteString(fmt.Sprintf("Arquivo: %s\n", filepath.Base(s.Path)))
+	b.WriteString("\n")
+
+	for i, pkg := range s.Packages {
+		cursor := "  "
+		if i == m.packageCursor {
+			cursor = "> "
+		}
+		status := "[x] instalar"
+		if skipped[pkg] {
+			status = "[ ] ignorar"
+		}
+		line := fmt.Sprintf("%s%-18s %s", cursor, pkg, status)
+		if i == m.packageCursor {
+			line = m.styles.selected.Render(line)
+		}
+		b.WriteString(line + "\n")
+	}
+
+	return strings.TrimRight(b.String(), "\n")
 }
 
 func (m Model) selectedScript() *scripts.Script {
@@ -672,9 +761,121 @@ func (m Model) handleListKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		}
 	case "r":
 		return m.startRun()
+	case "p":
+		if len(m.scripts) == 0 {
+			m.lastMessage = "Nenhum script selecionado."
+			return m, nil
+		}
+		if len(m.scripts[m.cursor].Packages) == 0 {
+			m.lastMessage = "Script selecionado nao possui lista de pacotes detectavel."
+			return m, nil
+		}
+		m.packageCursor = 0
+		m.mode = modePkgEdit
+		return m, nil
 	}
 
 	return m, nil
+}
+
+func (m Model) handlePackageKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	if len(m.scripts) == 0 || m.cursor < 0 || m.cursor >= len(m.scripts) {
+		m.mode = modeList
+		return m, nil
+	}
+
+	s := &m.scripts[m.cursor]
+	if len(s.Packages) == 0 {
+		m.mode = modeList
+		return m, nil
+	}
+
+	switch msg.String() {
+	case "ctrl+c", "q":
+		m.quitting = true
+		return m, tea.Quit
+	case "esc":
+		m.mode = modeList
+		m.lastMessage = "Editor de pacotes fechado."
+		return m, nil
+	case "up", "k":
+		if m.packageCursor > 0 {
+			m.packageCursor--
+		}
+	case "down", "j":
+		if m.packageCursor < len(s.Packages)-1 {
+			m.packageCursor++
+		}
+	case "home", "g":
+		m.packageCursor = 0
+	case "end", "G":
+		m.packageCursor = len(s.Packages) - 1
+	case " ", "enter":
+		pkg := s.Packages[m.packageCursor]
+		toggleSkipPackage(s, pkg)
+		if err := m.persistScriptSkips(*s); err != nil {
+			m.lastMessage = fmt.Sprintf("erro salvando overrides: %v", err)
+		} else {
+			m.lastMessage = fmt.Sprintf("Pacote atualizado: %s", pkg)
+		}
+	case "a":
+		allSkipped := len(s.SkipPackages) == len(s.Packages)
+		if allSkipped {
+			s.SkipPackages = nil
+			m.lastMessage = "Todos os pacotes marcados para instalar."
+		} else {
+			s.SkipPackages = append([]string{}, s.Packages...)
+			m.lastMessage = "Todos os pacotes marcados para ignorar."
+		}
+		if err := m.persistScriptSkips(*s); err != nil {
+			m.lastMessage = fmt.Sprintf("erro salvando overrides: %v", err)
+		}
+	}
+
+	return m, nil
+}
+
+func toggleSkipPackage(s *scripts.Script, pkg string) {
+	for i, current := range s.SkipPackages {
+		if current != pkg {
+			continue
+		}
+		s.SkipPackages = append(s.SkipPackages[:i], s.SkipPackages[i+1:]...)
+		return
+	}
+	s.SkipPackages = append(s.SkipPackages, pkg)
+}
+
+func (m *Model) persistScriptSkips(s scripts.Script) error {
+	if m.overrides.Interactive == nil {
+		m.overrides.Interactive = map[string]bool{}
+	}
+	if m.overrides.RequiresRoot == nil {
+		m.overrides.RequiresRoot = map[string]bool{}
+	}
+	if m.overrides.SkipPackages == nil {
+		m.overrides.SkipPackages = map[string][]string{}
+	}
+
+	key := filepath.Base(s.Path)
+	if len(s.SkipPackages) == 0 {
+		delete(m.overrides.SkipPackages, key)
+	} else {
+		clean := make([]string, 0, len(s.SkipPackages))
+		seen := map[string]bool{}
+		for _, pkg := range s.SkipPackages {
+			pkg = strings.TrimSpace(pkg)
+			if pkg == "" || seen[pkg] {
+				continue
+			}
+			seen[pkg] = true
+			clean = append(clean, pkg)
+		}
+		m.overrides.SkipPackages[key] = clean
+		s.SkipPackages = clean
+	}
+
+	return scripts.SaveOverrides(m.overridePath, m.overrides)
 }
 
 func (m Model) handleMainMenuKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {

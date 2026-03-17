@@ -15,7 +15,7 @@ import (
 )
 
 func main() {
-	rootFlag := flag.String("root", "", "Diretorio raiz do repositorio ou scripts/arch")
+	rootFlag := flag.String("root", "", "Diretorio raiz do repositorio ou um scripts/<distro>")
 	noAltScreen := flag.Bool("no-alt-screen", false, "Desativa tela alternativa")
 	maxLogs := flag.Int("max-logs", app.DefaultMaxLogs, "Numero maximo de logs a manter")
 	maxAgeDays := flag.Int("max-age-days", app.DefaultMaxAgeDays, "Numero maximo de dias para manter logs")
@@ -28,19 +28,19 @@ func main() {
 	}
 
 	root := filepath.Clean(resolveRoot(*rootFlag))
-	archDir, err := resolveArchDir(root)
+	scriptsDir, err := resolveScriptsDir(root)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "erro ao resolver scripts/arch: %v\n", err)
+		fmt.Fprintf(os.Stderr, "erro ao resolver diretório de scripts: %v\n", err)
 		os.Exit(1)
 	}
 
-	list, err := scripts.Discover(archDir)
+	list, err := scripts.Discover(scriptsDir)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "erro ao carregar scripts: %v\n", err)
 		os.Exit(1)
 	}
 
-	logPath := filepath.Join(archDir, "install.log")
+	logPath := filepath.Join(scriptsDir, "install.log")
 	config := app.LogRotateConfig{
 		MaxLogs:    *maxLogs,
 		MaxAgeDays: *maxAgeDays,
@@ -113,7 +113,7 @@ func osReleaseValue(line, key string) (string, bool) {
 	return value, true
 }
 
-func resolveArchDir(root string) (string, error) {
+func resolveScriptsDir(root string) (string, error) {
 	// First, check if the given root is a valid script directory (has install.sh and assets)
 	installPath := filepath.Join(root, "install.sh")
 	assetsPath := filepath.Join(root, "assets")

@@ -50,6 +50,23 @@ has_package() {
     esac
 }
 
+is_skipped_pkg() {
+    local pkg="$1"
+    local skip_csv="${BASHLN_SKIP_PACKAGES:-}"
+    if [[ -z "$skip_csv" ]]; then
+        return 1
+    fi
+    local item
+    IFS=',' read -ra items <<<"$skip_csv"
+    for item in "${items[@]}"; do
+        item="${item// /}"
+        if [[ "$item" == "$pkg" ]]; then
+            return 0
+        fi
+    done
+    return 1
+}
+
 refresh_pkg_cache() {
     if [[ "${PKG_CACHE_REFRESHED:-0}" -eq 0 ]]; then
         log_info "Atualizando metadados do pacote..."
@@ -63,6 +80,10 @@ refresh_pkg_cache() {
 
 ensure_pkg() {
     local pkg="$1"
+    if is_skipped_pkg "$pkg"; then
+        log_warn "Pacote ignorado por configuracao: $pkg"
+        return 0
+    fi
     if has_package "$pkg"; then
         log_info "Pacote já instalado: $pkg"
         return 0
@@ -82,20 +103,26 @@ install_list() {
     refresh_pkg_cache
 
     for pkg in "${pkgs[@]}"; do
+        if is_skipped_pkg "$pkg"; then
+            log_warn "Pacote ignorado por configuracao: $pkg"
+            continue
+        fi
         log_info "Instalando: $pkg"
         local out rc
-        (set +e
         case "$PKG_MANAGER" in
             dnf)
+                set +e
                 out="$(sudo dnf install -y "$pkg" 2>&1)"
                 rc=$?
+                set -e
                 ;;
             apt)
+                set +e
                 out="$(sudo apt-get install -y "$pkg" 2>&1)"
                 rc=$?
+                set -e
                 ;;
         esac
-        )
 
         if [[ $rc -eq 0 ]]; then
             ok+=("$pkg")
@@ -160,4 +187,4 @@ link_config() {
 
 export -f log_info log_ok log_warn log_error info ok
 export -f is_wsl has_command has_package refresh_pkg_cache ensure_pkg install_list
-export -f backup_file check_root confirm link_config
+export -f is_skipped_pkg backup_file check_root confirm link_config
