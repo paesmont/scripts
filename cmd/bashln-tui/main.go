@@ -1,11 +1,11 @@
 package main
 
 import (
-	"errors"
 	"flag"
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
 	"golang.org/x/term"
@@ -81,23 +81,85 @@ func resolveRoot(rootFlag string) string {
 	return cwd
 }
 
-func resolveArchDir(root string) (string, error) {
-	candidates := []string{root, filepath.Join(root, "scripts/arch")}
+// detectSystemDistro reads /etc/os-release and returns the distro ID
+func detectSystemDistro() string {
+	data, err := os.ReadFile("/etc/os-release")
+	if err != nil {
+		return ""
+	}
 
-	for _, dir := range candidates {
-		installPath := filepath.Join(dir, "install.sh")
-		assetsPath := filepath.Join(dir, "assets")
-
-		if fileExists(installPath) && dirExists(assetsPath) {
-			abs, err := filepath.Abs(dir)
-			if err != nil {
-				return "", err
-			}
-			return abs, nil
+	lines := strings.Split(string(data), "\n")
+	for _, line := range lines {
+		if value, ok := osReleaseValue(line, "ID"); ok {
+			return value
 		}
 	}
 
-	return "", errors.New("nao foi encontrado scripts/arch valido (esperado install.sh e assets/)")
+	return ""
+}
+
+// osReleaseValue extracts a value from /etc/os-release line
+func osReleaseValue(line, key string) (string, bool) {
+	prefix := key + "="
+	if !strings.HasPrefix(line, prefix) {
+		return "", false
+	}
+
+	value := strings.TrimPrefix(line, prefix)
+	// Remove quotes if present
+	if len(value) >= 2 && value[0] == '"' && value[len(value)-1] == '"' {
+		value = value[1 : len(value)-1]
+	}
+	return value, true
+}
+
+func resolveArchDir(root string) (string, error) {
+	// Se --root foi fornecido explicitamente, use como está
+	if root != "" && root != "." {
+		installPath := filepath.Join(root, "install.sh")
+		assetsPath := filepath.Join(root, "assets")
+		if fileExists(installPath) && dirExists(assetsPath) {
+			return filepath.Abs(root)
+		}
+		// Se não for válido, tentar scripts/arch como fallback para compatibilidade
+		root = filepath.Join(root, "scripts/arch")
+	}
+
+	// Detectar distro do sistema
+	distroID := detectSystemDistro()
+
+	// Mapear distro para diretório de scripts
+	var scriptDir string
+	switch distroID {
+	case "fedora", "rhel", "centos", "rocky", "almalinux":
+		scriptDir = "scripts/fedora"
+	case "ubuntu", "debian", "linuxmint", "pop":
+		scriptDir = "scripts/apt"
+	case "arch", "manjaro", "endeavouros", "artix":
+		scriptDir = "scripts/arch"
+	default:
+		// Fallback para scripts/arch (comportamento original)
+		scriptDir = "scripts/arch"
+	}
+
+	// Se o diretório detectado existir, use-o
+	dir := filepath.Join(root, scriptDir)
+	if fileExists(filepath.Join(dir, "install.sh")) && dirExists(filepath.Join(dir, "assets")) {
+		return filepath.Abs(dir)
+	}
+
+	// Tentar scripts/arch como fallback final
+	dir = filepath.Join(root, "scripts/arch")
+	if fileExists(filepath.Join(dir, "install.sh")) && dirExists(filepath.Join(dir, "assets")) {
+		return filepath.Abs(dir)
+	}
+
+	// Tentar o root original
+	if fileExists(filepath.Join(root, "install.sh")) && dirExists(filepath.Join(root, "assets")) {
+		return filepath.Abs(root)
+	}
+
+	return "", fmt.Errorf("nenhum diretório de scripts válido encontrado (tentado: %s, scripts/arch, root)", scriptDir)
 }
 
 func fileExists(path string) bool {

@@ -22,7 +22,7 @@ var knownDistros = []struct {
 }{
 	{"scripts/arch", "Arch Linux", "pacman + AUR (CachyOS)", "arch"},
 	{"scripts/apt", "Ubuntu / Pop!_OS", "APT — Debian/Ubuntu", "apt"},
-	{"scripts/wsl", "WSL (Fedora/Ubuntu)", "Windows Subsystem for Linux", "wsl"},
+	{"scripts/fedora", "Fedora", "DNF — Fedora Linux", "fedora"},
 }
 
 // DetectDistros scans root for all supported distro script directories.
