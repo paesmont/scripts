@@ -1,22 +1,11 @@
-#!/bin/bash
-# Fedora Atomic variant installer
+#!/usr/bin/env bash
+# Wrapper para usar a implementacao real em scripts/fedora-atomic
 
 set -euo pipefail
 
-# Source the library
-source "$(dirname "$0")/lib/utils.sh"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+COMMON_DIR="$(cd "$SCRIPT_DIR/../fedora-atomic" && pwd)"
 
-# Get variant from directory name (remove fedora-atomic- prefix)
-dir=$(basename "$(dirname "$0")")
-case "$dir" in
-  fedora-atomic-*) variant="${dir#fedora-atomic-}" ;;
-  *) variant="$dir" ;;
-esac
+export ATOMIC_VARIANT="bazzite"
 
-# Welcome message
-info "Instalando para Fedora Atomic $variant"
-
-# Execute base installation steps
-# TODO: Add specific steps for each variant when needed
-
-ok "Instalacao concluida para Fedora Atomic $variant"
+exec "$COMMON_DIR/install.sh" "$@"
