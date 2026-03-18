@@ -7,17 +7,17 @@
 set -euo pipefail
 
 detect_pkg_manager() {
-    if [ -x /usr/bin/dnf ]; then
-        echo "dnf"
-    elif [ -x /usr/bin/apt ]; then
-        echo "apt"
-    else
-        echo "unknown"
-    fi
+	if [ -x /usr/bin/dnf ]; then
+		echo "dnf"
+	elif [ -x /usr/bin/apt ]; then
+		echo "apt"
+	else
+		echo "unknown"
+	fi
 }
 
 if [ -z "${PKG_MANAGER:-}" ]; then
-    PKG_MANAGER="$(detect_pkg_manager)"
+	PKG_MANAGER="$(detect_pkg_manager)"
 fi
 
 readonly RED='\033[0;31m'
@@ -43,146 +43,142 @@ has_command() {
 }
 
 has_package() {
-    case "$PKG_MANAGER" in
-        dnf) rpm -q "$1" &>/dev/null ;;
-        apt) dpkg -l "$1" &>/dev/null ;;
-        *) return 1 ;;
-    esac
+	case "$PKG_MANAGER" in
+	dnf) rpm -q "$1" &>/dev/null ;;
+	apt) dpkg -l "$1" &>/dev/null ;;
+	*) return 1 ;;
+	esac
 }
 
 is_skipped_pkg() {
-    local pkg="$1"
-    local skip_csv="${BASHLN_SKIP_PACKAGES:-}"
-    if [[ -z "$skip_csv" ]]; then
-        return 1
-    fi
-    local item
-    IFS=',' read -ra items <<<"$skip_csv"
-    for item in "${items[@]}"; do
-        item="${item// /}"
-        if [[ "$item" == "$pkg" ]]; then
-            return 0
-        fi
-    done
-    return 1
+	local pkg="$1"
+	local skip_csv="${BASHLN_SKIP_PACKAGES:-}"
+	if [[ -z "$skip_csv" ]]; then
+		return 1
+	fi
+	local item
+	IFS=',' read -ra items <<<"$skip_csv"
+	for item in "${items[@]}"; do
+		item="${item// /}"
+		if [[ "$item" == "$pkg" ]]; then
+			return 0
+		fi
+	done
+	return 1
 }
 
 refresh_pkg_cache() {
-    if [[ "${PKG_CACHE_REFRESHED:-0}" -eq 0 ]]; then
-        log_info "Atualizando metadados do pacote..."
-        case "$PKG_MANAGER" in
-            dnf) sudo dnf makecache -y ;;
-            apt) sudo apt-get update ;;
-        esac
-        export PKG_CACHE_REFRESHED=1
-    fi
+	if [[ "${PKG_CACHE_REFRESHED:-0}" -eq 0 ]]; then
+		log_info "Atualizando metadados do pacote..."
+		case "$PKG_MANAGER" in
+		dnf) sudo dnf makecache -y ;;
+		apt) sudo apt-get update ;;
+		esac
+		export PKG_CACHE_REFRESHED=1
+	fi
 }
 
 ensure_pkg() {
-    local pkg="$1"
-    if is_skipped_pkg "$pkg"; then
-        log_warn "Pacote ignorado por configuracao: $pkg"
-        return 0
-    fi
-    if has_package "$pkg"; then
-        log_info "Pacote já instalado: $pkg"
-        return 0
-    fi
-    refresh_pkg_cache
-    log_info "Instalando: $pkg"
-    case "$PKG_MANAGER" in
-        dnf) sudo dnf install -y "$pkg" && ok "$pkg instalado" ;;
-        apt) sudo apt-get install -y "$pkg" && ok "$pkg instalado" ;;
-    esac
+	local pkg="$1"
+	if is_skipped_pkg "$pkg"; then
+		log_warn "Pacote ignorado por configuracao: $pkg"
+		return 0
+	fi
+	if has_package "$pkg"; then
+		log_info "Pacote já instalado: $pkg"
+		return 0
+	fi
+	refresh_pkg_cache
+	log_info "Instalando: $pkg"
+	case "$PKG_MANAGER" in
+	dnf) sudo dnf install -y "$pkg" && ok "$pkg instalado" ;;
+	apt) sudo apt-get install -y "$pkg" && ok "$pkg instalado" ;;
+	esac
 }
 
 install_list() {
-    local pkgs=("$@")
-    local ok=() missing=() failed=()
+	local pkgs=("$@")
+	local ok=() missing=() failed=()
 
-    refresh_pkg_cache
+	refresh_pkg_cache
 
-    for pkg in "${pkgs[@]}"; do
-        if is_skipped_pkg "$pkg"; then
-            log_warn "Pacote ignorado por configuracao: $pkg"
-            continue
-        fi
-        log_info "Instalando: $pkg"
-        local out rc
-        case "$PKG_MANAGER" in
-            dnf)
-                set +e
-                out="$(sudo dnf install -y "$pkg" 2>&1)"
-                rc=$?
-                set -e
-                ;;
-            apt)
-                set +e
-                out="$(sudo apt-get install -y "$pkg" 2>&1)"
-                rc=$?
-                set -e
-                ;;
-        esac
+	for pkg in "${pkgs[@]}"; do
+		if is_skipped_pkg "$pkg"; then
+			log_warn "Pacote ignorado por configuracao: $pkg"
+			continue
+		fi
+		log_info "Instalando: $pkg"
+		local out rc
+		case "$PKG_MANAGER" in
+		dnf)
+			out="$(sudo dnf install -y "$pkg" 2>&1)" || rc=$?
+			rc=${rc:-0}
+			;;
+		apt)
+			out="$(sudo apt-get install -y "$pkg" 2>&1)" || rc=$?
+			rc=${rc:-0}
+			;;
+		esac
 
-        if [[ $rc -eq 0 ]]; then
-            ok+=("$pkg")
-            ok "$pkg instalado"
-        elif grep -qiE "no match for argument|unable to find a match|not found|package.*is not available" <<<"$out"; then
-            missing+=("$pkg")
-            log_warn "Pacote não encontrado: $pkg"
-        else
-            failed+=("$pkg")
-            log_error "Falha ao instalar: $pkg"
-        fi
-    done
+		if [[ $rc -eq 0 ]]; then
+			ok+=("$pkg")
+			ok "$pkg instalado"
+		elif grep -qiE "no match for argument|unable to find a match|not found|package.*is not available" <<<"$out"; then
+			missing+=("$pkg")
+			log_warn "Pacote não encontrado: $pkg"
+		else
+			failed+=("$pkg")
+			log_error "Falha ao instalar: $pkg"
+		fi
+	done
 
-    echo
-    log_info "===== RESUMO ====="
-    echo "OK: ${#ok[@]}"
-    [[ ${#ok[@]} -gt 0 ]] && printf '   - %s\n' "${ok[@]}"
-    echo "Missing: ${#missing[@]}"
-    [[ ${#missing[@]} -gt 0 ]] && printf '   - %s\n' "${missing[@]}"
-    echo "Failed: ${#failed[@]}"
-    [[ ${#failed[@]} -gt 0 ]] && printf '   - %s\n' "${failed[@]}"
-    [[ ${#failed[@]} -gt 0 ]] && return 1
-    return 0
+	echo
+	log_info "===== RESUMO ====="
+	echo "OK: ${#ok[@]}"
+	[[ ${#ok[@]} -gt 0 ]] && printf '   - %s\n' "${ok[@]}"
+	echo "Missing: ${#missing[@]}"
+	[[ ${#missing[@]} -gt 0 ]] && printf '   - %s\n' "${missing[@]}"
+	echo "Failed: ${#failed[@]}"
+	[[ ${#failed[@]} -gt 0 ]] && printf '   - %s\n' "${failed[@]}"
+	[[ ${#failed[@]} -gt 0 ]] && return 1
+	return 0
 }
 
 backup_file() {
-    local file="$1"
-    if [[ -f "$file" ]]; then
-        local backup="${file}.backup.$(date +%Y%m%d-%H%M%S)"
-        cp "$file" "$backup"
-        log_info "Backup criado: $backup"
-    fi
+	local file="$1"
+	if [[ -f "$file" ]]; then
+		local backup="${file}.backup.$(date +%Y%m%d-%H%M%S)"
+		cp "$file" "$backup"
+		log_info "Backup criado: $backup"
+	fi
 }
 
 check_root() {
-    if [[ $EUID -eq 0 ]]; then
-        log_error "Não execute como root/sudo"
-        exit 1
-    fi
+	if [[ $EUID -eq 0 ]]; then
+		log_error "Não execute como root/sudo"
+		exit 1
+	fi
 }
 
 confirm() {
-    local msg="${1:-Continuar?}"
-    read -rp "$msg [y/N]: " response
-    [[ "$response" =~ ^[Yy]$ ]]
+	local msg="${1:-Continuar?}"
+	read -rp "$msg [y/N]: " response
+	[[ "$response" =~ ^[Yy]$ ]]
 }
 
 link_config() {
-    local source="$1"
-    local target="$2"
+	local source="$1"
+	local target="$2"
 
-    if [[ -L "$target" ]]; then
-        rm "$target"
-    elif [[ -e "$target" ]]; then
-        backup_file "$target"
-        rm -rf "$target"
-    fi
+	if [[ -L "$target" ]]; then
+		rm "$target"
+	elif [[ -e "$target" ]]; then
+		backup_file "$target"
+		rm -rf "$target"
+	fi
 
-    ln -s "$source" "$target"
-    ok "Link criado: $target -> $source"
+	ln -s "$source" "$target"
+	ok "Link criado: $target -> $source"
 }
 
 export -f log_info log_ok log_warn log_error info ok

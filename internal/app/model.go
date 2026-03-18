@@ -813,7 +813,7 @@ func (m Model) handlePackageKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case " ", "enter":
 		pkg := s.Packages[m.packageCursor]
 		toggleSkipPackage(s, pkg)
-		if err := m.persistScriptSkips(*s); err != nil {
+		if err := m.persistScriptSkips(s); err != nil {
 			m.lastMessage = fmt.Sprintf("erro salvando overrides: %v", err)
 		} else {
 			m.lastMessage = fmt.Sprintf("Pacote atualizado: %s", pkg)
@@ -827,7 +827,7 @@ func (m Model) handlePackageKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			s.SkipPackages = append([]string{}, s.Packages...)
 			m.lastMessage = "Todos os pacotes marcados para ignorar."
 		}
-		if err := m.persistScriptSkips(*s); err != nil {
+		if err := m.persistScriptSkips(s); err != nil {
 			m.lastMessage = fmt.Sprintf("erro salvando overrides: %v", err)
 		}
 	}
@@ -846,7 +846,7 @@ func toggleSkipPackage(s *scripts.Script, pkg string) {
 	s.SkipPackages = append(s.SkipPackages, pkg)
 }
 
-func (m *Model) persistScriptSkips(s scripts.Script) error {
+func (m *Model) persistScriptSkips(s *scripts.Script) error {
 	if m.overrides.Interactive == nil {
 		m.overrides.Interactive = map[string]bool{}
 	}
