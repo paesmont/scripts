@@ -74,7 +74,7 @@ cmd_create() {
             # Instala yay como AUR helper
             if ! command -v yay >/dev/null 2>&1; then
                 cd /tmp
-                git clone https://aur.archlinux.org/yay.git
+                git clone --depth=1 https://aur.archlinux.org/yay.git
                 cd yay
                 makepkg -si --noconfirm
                 cd /tmp && rm -rf yay

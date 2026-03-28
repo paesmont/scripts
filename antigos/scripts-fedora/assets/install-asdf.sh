@@ -16,7 +16,7 @@ main() {
     fi
 
     info "Clonando asdf..."
-    git clone https://github.com/asdf-vm/asdf.git "$ASDF_DIR" --branch v0.14.1
+    git clone --depth=1 https://github.com/asdf-vm/asdf.git "$ASDF_DIR" --branch v0.14.1
 
     # Configura no bashrc se necessario
     if ! grep -q 'asdf.sh' "$HOME/.bashrc" 2>/dev/null; then

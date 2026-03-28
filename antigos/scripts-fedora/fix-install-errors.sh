@@ -61,7 +61,7 @@ if command -v ruby &> /dev/null; then
 else
     log_info "Ruby não instalado. Se precisar:"
     echo "  sudo dnf install ruby ruby-devel"
-    echo "  OU instale asdf: git clone https://github.com/asdf-vm/asdf.git ~/.asdf"
+    echo "  OU instale asdf: git clone --depth=1 https://github.com/asdf-vm/asdf.git ~/.asdf"
 fi
 
 log_info ""

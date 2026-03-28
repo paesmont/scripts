@@ -23,7 +23,7 @@ func main() {
 	flag.Parse()
 
 	if !term.IsTerminal(int(os.Stdin.Fd())) || !term.IsTerminal(int(os.Stdout.Fd())) {
-		fmt.Fprintln(os.Stderr, "erro: bashln-tui requer TTY interativo (stdin/stdout)")
+		fmt.Fprintln(os.Stderr, "erro: pomo-tui requer TTY interativo (stdin/stdout)")
 		os.Exit(1)
 	}
 

@@ -9,7 +9,7 @@ main() {
     if ! command -v yay >/dev/null 2>&1; then
         warn "yay não encontrado. Instalação automática pode exigir intervenção manual."
         info "Sugestão:"
-        info "  git clone https://aur.archlinux.org/yay.git"
+        info "  git clone --depth=1 https://aur.archlinux.org/yay.git"
         info "  cd yay && makepkg -si --noconfirm"
         info "  cd .. && rm -rf yay"
         return

@@ -394,7 +394,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (m Model) View() string {
 	var b strings.Builder
 
-	b.WriteString(m.styles.header.Render("bashln-tui (MVP)") + "\n")
+	b.WriteString(m.styles.header.Render("pomo-tui (MVP)") + "\n")
 
 	switch m.mode {
 	case modeMainMenu:

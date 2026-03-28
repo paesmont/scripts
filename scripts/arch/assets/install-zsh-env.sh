@@ -25,7 +25,7 @@ main() {
 	plugin_dir="$zsh_custom/plugins/$plugin_name"
 	if [[ -d "$plugin_dir" ]]; then
 		ok "$plugin_name já existe; pulando clone."
-	elif ! git clone https://github.com/unixorn/fzf-zsh-plugin "$plugin_dir"; then
+	elif ! git clone --depth=1 https://github.com/unixorn/fzf-zsh-plugin "$plugin_dir"; then
 		warn "Falha ao clonar $plugin_name."
 	fi
 
@@ -33,7 +33,7 @@ main() {
 	plugin_dir="$zsh_custom/plugins/$plugin_name"
 	if [[ -d "$plugin_dir" ]]; then
 		ok "$plugin_name já existe; pulando clone."
-	elif ! git clone https://github.com/zsh-users/zsh-autosuggestions "$plugin_dir"; then
+	elif ! git clone --depth=1 https://github.com/zsh-users/zsh-autosuggestions "$plugin_dir"; then
 		warn "Falha ao clonar $plugin_name."
 	fi
 
@@ -41,7 +41,7 @@ main() {
 	plugin_dir="$zsh_custom/plugins/$plugin_name"
 	if [[ -d "$plugin_dir" ]]; then
 		ok "$plugin_name já existe; pulando clone."
-	elif ! git clone https://github.com/zsh-users/zsh-completions "$plugin_dir"; then
+	elif ! git clone --depth=1 https://github.com/zsh-users/zsh-completions "$plugin_dir"; then
 		warn "Falha ao clonar $plugin_name."
 	fi
 
@@ -49,7 +49,7 @@ main() {
 	plugin_dir="$zsh_custom/plugins/$plugin_name"
 	if [[ -d "$plugin_dir" ]]; then
 		ok "$plugin_name já existe; pulando clone."
-	elif ! git clone https://github.com/zsh-users/zsh-syntax-highlighting.git "$plugin_dir"; then
+	elif ! git clone --depth=1 https://github.com/zsh-users/zsh-syntax-highlighting.git "$plugin_dir"; then
 		warn "Falha ao clonar $plugin_name."
 	fi
 

@@ -18,7 +18,7 @@ if [ -d "$TPM_DIR" ]; then
   echo "TPM is already installed in $TPM_DIR"
 else
   echo "Installing Tmux Plugin Manager (TPM)..."
-  git clone https://github.com/tmux-plugins/tpm $TPM_DIR
+  git clone --depth=1 https://github.com/tmux-plugins/tpm $TPM_DIR
 fi
 
 echo "TPM installed successfully!"

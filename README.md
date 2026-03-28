@@ -27,7 +27,7 @@ Esses scripts foram escritos para:
 ```
 bshln-scripts/
 ├── README.md
-├── scripts/arch/              # Scripts para Arch Linux / CachyOS
+├── scripts-arch/              # Scripts para Arch Linux / CachyOS
 │   ├── install-all.sh         # Orquestrador principal
 │   ├── update.sh              # Atualizacao leve
 │   ├── full-update.sh         # Atualizacao completa
@@ -36,7 +36,7 @@ bshln-scripts/
 │   └── assets/
 │       └── install-*.sh       # Scripts individuais
 │
-├── scripts/fedora-wsl/        # Scripts para Fedora Workstation 41+
+├── scripts-fedora/            # Scripts para Fedora Workstation 41+
 │   ├── install-all.sh         # Orquestrador principal
 │   ├── update.sh              # Atualizacao leve
 │   ├── full-update.sh         # Atualizacao completa
@@ -49,7 +49,7 @@ bshln-scripts/
 │   └── assets/
 │       └── install-*.sh       # Scripts individuais
 │
-├── scripts/apt/               # Scripts para Pop!_OS / Ubuntu
+├── scripts-apt/               # Scripts para Pop!_OS / Ubuntu
 │   ├── post-install-apt.sh
 │   ├── pop-update.sh
 │   ├── pop-clean.sh
@@ -66,19 +66,10 @@ bshln-scripts/
 
 ## Uso da TUI (MVP)
 
-O `bashln-tui` atual opera sobre `scripts/arch`.
-
 Execute a interface TUI a partir da raiz do repositorio:
 
 ```bash
-go run ./cmd/bashln-tui --root ./scripts/arch
-```
-
-Para gerar ou atualizar o binario local:
-
-```bash
-go build -o ./bashln-tui ./cmd/bashln-tui
-./bashln-tui --root ./scripts/arch
+go run ./cmd/pomo-tui --root ./scripts-arch
 ```
 
 Atalhos principais:
@@ -90,21 +81,16 @@ Atalhos principais:
 - `esc`/`ctrl+c`: cancelar execucao em andamento
 - `q`: sair
 
-Observacoes:
-
-- Scripts marcados como `interactive` tomam o terminal em foreground temporariamente. Responda ao prompt e a TUI volta ao final.
-- Se o binario `./bashln-tui` se comportar diferente do codigo atual, recompile antes de usar.
-
 Flags disponiveis:
 
-- `--root <path>`: define a raiz do repositorio ou o diretorio `scripts/arch`
+- `--root <path>`: define a raiz do repositorio ou o diretorio `scripts-arch`
 - `--no-alt-screen`: desativa a tela alternativa do terminal
 
 ### Arch Linux / CachyOS
 
 ```bash
 git clone <repo-url>
-cd scripts/arch
+cd scripts/scripts-arch
 chmod +x *.sh assets/*.sh
 
 # Dependencias minimas
@@ -121,7 +107,7 @@ sudo pacman -S --needed git base-devel curl
 
 ```bash
 git clone <repo-url>
-cd scripts/fedora-wsl
+cd scripts/scripts-fedora
 chmod +x *.sh assets/*.sh
 
 # Dependencias minimas (ja vem com Fedora)
@@ -140,13 +126,11 @@ sudo dnf install -y git curl
 ./system-maintenance.sh --dry-run
 ```
 
-Observacao: o diretorio se chama `scripts/fedora-wsl` por historico, mas atende Fedora nativo e WSL2. Apenas comandos marcados como `[WSL]` dependem de integracao com Windows.
-
 ### Pop!_OS / Ubuntu
 
 ```bash
 git clone <repo-url>
-cd scripts/apt
+cd scripts/scripts-apt
 
 # Instalacao completa
 ./post-install-apt.sh

@@ -28,19 +28,19 @@ main() {
 
   mkdir -p "$zsh_custom/plugins" "$zsh_custom/themes"
 
-  git clone https://github.com/unixorn/fzf-zsh-plugin \
+  git clone --depth=1 https://github.com/unixorn/fzf-zsh-plugin \
     "$zsh_custom/plugins/fzf-zsh-plugin" \
     || warn "fzf-zsh-plugin já existe ou falha no clone."
 
-  git clone https://github.com/zsh-users/zsh-autosuggestions \
+  git clone --depth=1 https://github.com/zsh-users/zsh-autosuggestions \
     "$zsh_custom/plugins/zsh-autosuggestions" \
     || warn "zsh-autosuggestions já existe ou falha no clone."
 
-  git clone https://github.com/zsh-users/zsh-completions \
+  git clone --depth=1 https://github.com/zsh-users/zsh-completions \
     "$zsh_custom/plugins/zsh-completions" \
     || warn "zsh-completions já existe ou falha no clone."
 
-  git clone https://github.com/zsh-users/zsh-syntax-highlighting.git \
+  git clone --depth=1 https://github.com/zsh-users/zsh-syntax-highlighting.git \
     "$zsh_custom/plugins/zsh-syntax-highlighting" \
     || warn "zsh-syntax-highlighting já existe ou falha no clone."
 

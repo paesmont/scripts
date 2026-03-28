@@ -128,7 +128,7 @@ STEPS=(
   # "install-tmux.sh"
   # "install-zsh-env.sh"
   # "install-ohmybash-starship.sh"
-  "install-dank-material-shell.sh" # Shell customization
+  # "install-dank-material-shell.sh" # Shell customization
   # "set-shell.sh"                   # Change default shell (should be after shell installs)
 
   # ----------------------------------------
@@ -136,7 +136,7 @@ STEPS=(
   # ----------------------------------------
   "install-ntfs-3g.sh"
   "install-samba.sh"
-  "autofs.sh"
+  # "autofs.sh"
   "install-wl-clipboard.sh"
   "fix-services.sh"
 
@@ -157,8 +157,8 @@ STEPS=(
   # "install-vscode.sh"
   "install-lazygit.sh"
   "install-emacs.sh"
-  # "install-neovim.sh"
-  "configure-git.sh" # Configuration, depends on git
+  "install-neovim.sh"
+  # "configure-git.sh" # Configuration, depends on git
 
   # ----------------------------------------
   # 8. Applications
