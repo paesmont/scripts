@@ -85,7 +85,7 @@ toolbox run -c dev bash << EOF
 
     # fzf-zsh-plugin
     if [ ! -d "${ZSH_CUSTOM}/plugins/fzf-zsh-plugin" ]; then
-        git clone https://github.com/unixorn/fzf-zsh-plugin "${ZSH_CUSTOM}/plugins/fzf-zsh-plugin" || echo -e "${red}❌ Falha ao clonar fzf-zsh-plugin.${nc}"
+        git clone --depth=1 https://github.com/unixorn/fzf-zsh-plugin "${ZSH_CUSTOM}/plugins/fzf-zsh-plugin" || echo -e "${red}❌ Falha ao clonar fzf-zsh-plugin.${nc}"
         echo -e "${green}✅ fzf-zsh-plugin clonado.${nc}"
     else
         echo -e "${yellow}ℹ️ fzf-zsh-plugin já existe.${nc}"
@@ -93,7 +93,7 @@ toolbox run -c dev bash << EOF
 
     # zsh-autosuggestions
     if [ ! -d "${ZSH_CUSTOM}/plugins/zsh-autosuggestions" ]; then
-        git clone https://github.com/zsh-users/zsh-autosuggestions "${ZSH_CUSTOM}/plugins/zsh-autosuggestions" || echo -e "${red}❌ Falha ao clonar zsh-autosuggestions.${nc}"
+        git clone --depth=1 https://github.com/zsh-users/zsh-autosuggestions "${ZSH_CUSTOM}/plugins/zsh-autosuggestions" || echo -e "${red}❌ Falha ao clonar zsh-autosuggestions.${nc}"
         echo -e "${green}✅ zsh-autosuggestions clonado.${nc}"
     else
         echo -e "${yellow}ℹ️ zsh-autosuggestions já existe.${nc}"
@@ -101,7 +101,7 @@ toolbox run -c dev bash << EOF
 
     # zsh-completions
     if [ ! -d "${ZSH_CUSTOM}/plugins/zsh-completions" ]; then
-        git clone https://github.com/zsh-users/zsh-completions "${ZSH_CUSTOM}/plugins/zsh-completions" || echo -e "${red}❌ Falha ao clonar zsh-completions.${nc}"
+        git clone --depth=1 https://github.com/zsh-users/zsh-completions "${ZSH_CUSTOM}/plugins/zsh-completions" || echo -e "${red}❌ Falha ao clonar zsh-completions.${nc}"
         echo -e "${green}✅ zsh-completions clonado.${nc}"
     else
         echo -e "${yellow}ℹ️ zsh-completions já existe.${nc}"
@@ -109,7 +109,7 @@ toolbox run -c dev bash << EOF
 
     # zsh-syntax-highlighting
     if [ ! -d "${ZSH_CUSTOM}/plugins/zsh-syntax-highlighting" ]; then
-        git clone https://github.com/zsh-users/zsh-syntax-highlighting.git "${ZSH_CUSTOM}/plugins/zsh-syntax-highlighting" || echo -e "${red}❌ Falha ao clonar zsh-syntax-highlighting.${nc}"
+        git clone --depth=1 https://github.com/zsh-users/zsh-syntax-highlighting.git "${ZSH_CUSTOM}/plugins/zsh-syntax-highlighting" || echo -e "${red}❌ Falha ao clonar zsh-syntax-highlighting.${nc}"
         echo -e "${green}✅ zsh-syntax-highlighting clonado.${nc}"
     else
         echo -e "${yellow}ℹ️ zsh-syntax-highlighting já existe.${nc}"

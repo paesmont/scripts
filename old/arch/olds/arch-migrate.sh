@@ -183,7 +183,7 @@ install_paru_if_needed() {
     info "Instalando paru (helper AUR)…"
     sudo pacman -S --needed --noconfirm base-devel git
     rm -rf /tmp/paru
-    git clone https://aur.archlinux.org/paru.git /tmp/paru
+    git clone --depth=1 https://aur.archlinux.org/paru.git /tmp/paru
     (cd /tmp/paru && makepkg -si --noconfirm)
     log "paru instalado."
   else

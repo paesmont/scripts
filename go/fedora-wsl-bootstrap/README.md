@@ -121,4 +121,4 @@ bootstrap-go/
 ---
 
 **Versão**: 2.0  
-**Autor**: bashln
+**Autor**: paesmont

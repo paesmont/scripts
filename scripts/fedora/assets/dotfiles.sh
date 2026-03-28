@@ -17,7 +17,7 @@ info "Configurando dotfiles..."
 
 if [[ ! -d "$DOTFILES_DIR" ]]; then
     info "Clonando dotfiles..."
-    git clone --branch "$DOTFILES_BRANCH" "$DOTFILES_REPO" "$DOTFILES_DIR"
+    git clone --depth=1 --branch "$DOTFILES_BRANCH" "$DOTFILES_REPO" "$DOTFILES_DIR"
     ok "Dotfiles clonados"
 else
     info "Atualizando dotfiles..."

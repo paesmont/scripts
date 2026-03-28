@@ -16,7 +16,7 @@ DOTFILES_DIR="${DOTFILES_DIR:-$HOME/dotfiles}"
 info "Configurando dotfiles"
 
 if [[ ! -d "$DOTFILES_DIR/.git" ]]; then
-    git clone --branch "$DOTFILES_BRANCH" "$DOTFILES_REPO" "$DOTFILES_DIR"
+    git clone --depth=1 --branch "$DOTFILES_BRANCH" "$DOTFILES_REPO" "$DOTFILES_DIR"
 else
     git -C "$DOTFILES_DIR" fetch origin
     git -C "$DOTFILES_DIR" checkout -B "$DOTFILES_BRANCH" "origin/$DOTFILES_BRANCH"

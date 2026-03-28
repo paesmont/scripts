@@ -154,10 +154,10 @@ log "Clonando plugins do Zsh (ignorando se já existirem)..."
 ZSH_CUSTOM_DIR="${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}"
 mkdir -p "$ZSH_CUSTOM_DIR/plugins" "$ZSH_CUSTOM_DIR/themes"
 
-git clone https://github.com/unixorn/fzf-zsh-plugin               "$ZSH_CUSTOM_DIR/plugins/fzf-zsh-plugin"               2>/dev/null || warn "fzf-zsh-plugin já existe ou falhou (ignorando)"
-git clone https://github.com/zsh-users/zsh-autosuggestions        "$ZSH_CUSTOM_DIR/plugins/zsh-autosuggestions"          2>/dev/null || warn "zsh-autosuggestions já existe ou falhou (ignorando)"
-git clone https://github.com/zsh-users/zsh-completions            "$ZSH_CUSTOM_DIR/plugins/zsh-completions"              2>/dev/null || warn "zsh-completions já existe ou falhou (ignorando)"
-git clone https://github.com/zsh-users/zsh-syntax-highlighting    "$ZSH_CUSTOM_DIR/plugins/zsh-syntax-highlighting"      2>/dev/null || warn "zsh-syntax-highlighting já existe ou falhou (ignorando)"
+git clone --depth=1 https://github.com/unixorn/fzf-zsh-plugin               "$ZSH_CUSTOM_DIR/plugins/fzf-zsh-plugin"               2>/dev/null || warn "fzf-zsh-plugin já existe ou falhou (ignorando)"
+git clone --depth=1 https://github.com/zsh-users/zsh-autosuggestions        "$ZSH_CUSTOM_DIR/plugins/zsh-autosuggestions"          2>/dev/null || warn "zsh-autosuggestions já existe ou falhou (ignorando)"
+git clone --depth=1 https://github.com/zsh-users/zsh-completions            "$ZSH_CUSTOM_DIR/plugins/zsh-completions"              2>/dev/null || warn "zsh-completions já existe ou falhou (ignorando)"
+git clone --depth=1 https://github.com/zsh-users/zsh-syntax-highlighting    "$ZSH_CUSTOM_DIR/plugins/zsh-syntax-highlighting"      2>/dev/null || warn "zsh-syntax-highlighting já existe ou falhou (ignorando)"
 git clone --depth=1 https://github.com/romkatv/powerlevel10k.git  "$ZSH_CUSTOM_DIR/themes/powerlevel10k"                 2>/dev/null || warn "powerlevel10k já existe ou falhou (ignorando)"
 
 # --- Git config --------------------------------------------------------------

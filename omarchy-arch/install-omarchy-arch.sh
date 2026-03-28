@@ -28,7 +28,7 @@ fi
 
 # 2) clonar o repo (em workspace)
 echo ">>> Clonando Omarchy em $WORKDIR/omarchy..."
-git clone "$REPO_URL" "$WORKDIR/omarchy"
+git clone --depth=1 "$REPO_URL" "$WORKDIR/omarchy"
 
 # 3) instalar yay (se faltando)
 if ! command -v yay &>/dev/null; then
@@ -37,7 +37,7 @@ if ! command -v yay &>/dev/null; then
     echo "Falha: não foi possível garantir base-devel"
     exit 1
   }
-  git clone https://aur.archlinux.org/yay.git /tmp/yay-omarchy-installer
+  git clone --depth=1 https://aur.archlinux.org/yay.git /tmp/yay-omarchy-installer
   (cd /tmp/yay-omarchy-installer && makepkg -si --noconfirm)
   rm -rf /tmp/yay-omarchy-installer
 fi
@@ -67,6 +67,22 @@ echo ">>> Aplicando patches de segurança para não alterar DM, LUKS ou bootload
 
 cd "$DEST"
 
+append_ignorepkg_if_missing() {
+  local pkg="$1"
+  local current
+
+  current=$(sudo grep -E '^[[:space:]]*IgnorePkg[[:space:]]*=' /etc/pacman.conf || true)
+  if grep -Eq "^[[:space:]]*IgnorePkg[[:space:]]*=.*(^|[[:space:]])${pkg}([[:space:]]|$)" <<<"$current"; then
+    return 0
+  fi
+
+  if [[ -n "$current" ]]; then
+    sudo sed -i -E "/^[[:space:]]*IgnorePkg[[:space:]]*=/ s/$/ ${pkg}/" /etc/pacman.conf
+  else
+    printf '\nIgnorePkg = %s\n' "$pkg" | sudo tee -a /etc/pacman.conf >/dev/null
+  fi
+}
+
 # Backup dos scripts que vamos tocar (apenas para segurança)
 mkdir -p "$DEST/.installer-backups"
 cp -a install config bin "$DEST/.installer-backups/" || true
@@ -77,10 +93,11 @@ cp -a install config bin "$DEST/.installer-backups/" || true
 grep -R --line-number "pacman.conf" -n install || true
 # comentar linhas em scripts onde aparece "pacman.conf" para prevenir alterações automáticas
 # fazemos isso somente nos arquivos de install e post-install
-for f in $(grep -RIl "pacman.conf" install || true); do
+while IFS= read -r f; do
+  [[ -n "$f" ]] || continue
   echo " - Comentando chamadas a pacman.conf em: $f"
-  sed -i.bak "/pacman.conf/ s/^/# OMARCHY-SAFE: /" "$f"
-done
+  sed -i "/pacman.conf/ s/^/# OMARCHY-SAFE: /" "$f"
+done < <(grep -RIl "pacman.conf" install || true)
 
 # 6.2 remover/inibir chamadas problemáticas que alteram DM, plymouth, limine, alt-bootloaders, pacman.sh
 # pattern de scripts a inibir (nomes comuns no omarchy)
@@ -98,22 +115,23 @@ for s in "${BAD_SCRIPTS[@]}"; do
     echo " - Inibindo chamada a $s"
     # remover a linha que faz "run_logged $OMARCHY_INSTALL/..." nas listagens "all.sh"
     # Procuramos nos arquivos all.sh por ocorrências do script e comentamos a linha
-    for allf in $(grep -RIl "${s##*/}" || true); do
-      sed -i.bak "/${s##*/}/ s/^/# OMARCHY-SAFE: /" "$allf" || true
-    done
+    while IFS= read -r allf; do
+      [[ -n "$allf" ]] || continue
+      sed -i "/${s##*/}/ s/^/# OMARCHY-SAFE: /" "$allf" || true
+    done < <(grep -RIl "${s##*/}" || true)
   fi
 done
 
 # 6.3 remover tldr se conflitar com tealdeer: apenas remover tldr da lista de pacotes
 if [ -f "install/omarchy-base.packages" ]; then
   echo " - Ajustando lista de pacotes: removendo 'tldr' se presente (para evitar conflito com tealdeer)"
-  sed -i.bak '/\btldr\b/d' install/omarchy-base.packages || true
+  sed -i '/\btldr\b/d' install/omarchy-base.packages || true
 fi
 
 # 6.4 ajustes de env de mise para suportar shells comuns (preservando comportamento)
 if [ -f "config/uwsm/env" ]; then
   echo " - Ajustando config/uwsm/env para checagem de shell (bash/fish)..."
-  sed -i.bak "s/if command -v mise &> \/dev\/null; then/if [ \"\$SHELL\" = \"\/bin\/bash\" ] \&\& command -v mise \&> \/dev\/null; then/" config/uwsm/env || true
+  sed -i "s/if command -v mise &> \/dev\/null; then/if [ \"\$SHELL\" = \"\/bin\/bash\" ] \&\& command -v mise \&> \/dev\/null; then/" config/uwsm/env || true
   # adicionar suporte fish (somente se não existir)
   if ! grep -q "mise activate fish" config/uwsm/env 2>/dev/null; then
     sed -i '/eval "\$(mise activate bash)"/a\
@@ -130,29 +148,31 @@ fi
 
 echo ">>> Ajustando ambiente Rust (rust vs rustup)..."
 
-# 1. Remover pacotes conflitantes
-for pkg in rust rustup; do
-  if pacman -Q "$pkg" &>/dev/null; then
-    echo " - Removendo $pkg para preparar ambiente limpo..."
-    sudo pacman -R --noconfirm "$pkg" || true
-  fi
-done
-
-# 2. Impedir reinstalação futura de rust
-echo " - Configurando IgnorePkg para impedir reinstalação de rust..."
-sudo sed -i '/^IgnorePkg/d' /etc/pacman.conf
-echo "IgnorePkg = rust" | sudo tee -a /etc/pacman.conf >/dev/null
-
-# 3. Remover rust da lista de pacotes se presente
+# 1. Remover rust da lista de pacotes se presente
 if grep -q "^rust$" install/omarchy-base.packages 2>/dev/null; then
   echo " - Removendo 'rust' da lista de pacotes do Omarchy..."
   sed -i '/^rust$/d' install/omarchy-base.packages
 fi
 
-# 4. Instalar rustup limpinho
-echo " - Instalando rustup..."
-sudo pacman -S --noconfirm rustup
-rustup default stable || true
+# 2. Se o Omarchy exige rustup, evitar reinstalação futura de rust sem apagar outras regras
+if grep -q "^rustup$" install/omarchy-base.packages 2>/dev/null; then
+  echo " - Configurando IgnorePkg para impedir reinstalação de rust..."
+  append_ignorepkg_if_missing rust
+
+  if pacman -Q rust &>/dev/null; then
+    echo " - Detectado 'rust' instalado e 'rustup' presente na lista de pacotes Omarchy. Removendo 'rust' para evitar conflito."
+    sudo pacman -R --noconfirm rust || {
+      echo "Erro: não foi possível remover rust. Abortando para evitar conflito."
+      exit 1
+    }
+  fi
+
+  if ! pacman -Q rustup &>/dev/null; then
+    echo " - Instalando rustup..."
+    sudo pacman -S --noconfirm rustup
+  fi
+  rustup default stable || true
+fi
 
 echo " - Ambiente Rust preparado."
 
@@ -160,21 +180,6 @@ echo ">>> Instalando pacotes base listados pelo Omarchy (somente pacman + AUR), 
 PKG_FILE="install/omarchy-base.packages"
 if [ -f "$PKG_FILE" ]; then
   echo ">>> Checando conflito rust vs rustup..."
-
-  # Se rust está instalado, e os pacotes a instalar incluem rustup (direta ou indiretamente),
-  # removemos rust automaticamente para evitar o conflito "rustup X rust".
-
-  if pacman -Q rust &>/dev/null; then
-    # Verifica se rustup está no pacote base do Omarchy
-    if grep -q "^rustup$" install/omarchy-base.packages 2>/dev/null; then
-      echo " - Detectado 'rust' instalado e 'rustup' presente na lista de pacotes Omarchy."
-      echo " - Removendo 'rust' para evitar conflito e habilitar uso correto de rustup."
-      sudo pacman -R --noconfirm rust || {
-        echo "Erro: não foi possível remover rust. Abortando para evitar conflito."
-        exit 1
-      }
-    fi
-  fi
 
   # Garantir que rustup exista se foi solicitado
   if grep -q "^rustup$" install/omarchy-base.packages 2>/dev/null; then
@@ -281,7 +286,7 @@ cat <<EOF
 
 >>> PRONTO (parcial).
 O instalador aplicou patches seguros para não:
-  - alterar /etc/pacman.conf automaticamente,
+  - alterar /etc/pacman.conf de forma ampla/automática (apenas inclusões pontuais e controladas, como IgnorePkg e repositório Omarchy, quando exigidos),
   - mexer no LUKS (nenhum passo de criptografia será modificado),
   - alterar seu Display Manager (SDDM/KDE) ou forçar Hyprland como sessão padrão.
 

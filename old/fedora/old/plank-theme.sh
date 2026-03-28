@@ -1,1 +1,1 @@
-git clone https://github.com/arcolinux/arcolinux-plank-themes.git
+git clone --depth=1 https://github.com/arcolinux/arcolinux-plank-themes.git

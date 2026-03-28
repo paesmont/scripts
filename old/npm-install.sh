@@ -14,7 +14,7 @@ sudo pacman -Syu --noconfirm nodejs
 # Se você precisar de um helper do AUR, descomente a linha abaixo e instale-o
 # O `yay` é uma boa opção
 # sudo pacman -S --noconfirm git base-devel
-# git clone https://aur.archlinux.org/yay.git
+# git clone --depth=1 https://aur.archlinux.org/yay.git
 # cd yay
 # makepkg -si --noconfirm
 # cd .. && rm -rf yay

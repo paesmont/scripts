@@ -75,7 +75,7 @@ bashln-scripts/
 +-- .prettierrc                 # Configuracao de formatting
 |
 +-- cmd/
-|   +-- bashln-tui/            # Aplicativo TUI Go (Bubble Tea) - TUI principal
+|   +-- pomo-tui/            # Aplicativo TUI Go (Bubble Tea) - TUI principal
 |       +-- main.go            # Entry point
 |
 +-- go/
@@ -165,7 +165,7 @@ bashln-scripts/
 +-- .prettierrc                 # Configuracao de formatting
 |
 +-- cmd/
-|   +-- bashln-tui/            # Aplicativo TUI Go (Bubble Tea)
+|   +-- pomo-tui/            # Aplicativo TUI Go (Bubble Tea)
 |       +-- main.go            # Entry point
 |
 +-- internal/                   # Pacotes Go internos
@@ -240,7 +240,7 @@ bashln-scripts/
 
 | Ferramenta  | Descricao                        | Uso                                 |
 | ----------- | -------------------------------- | ----------------------------------- |
-| Bubble Tea  | Framework TUI em Go              | cmd/bashln-tui (principal)         |
+| Bubble Tea  | Framework TUI em Go              | cmd/pomo-tui (principal)         |
 | Bubble Tea  | Framework TUI em Go              | go/*-wsl-bootstrap/ (WSL)          |
 
 ### Ferramentas de Container
@@ -515,7 +515,7 @@ Suporte para detecção e execução de scripts em variantes Fedora Atomic Deskt
 
 2. **Scripts Disponíveis**: Cada variante tem `install.sh` funcional e `lib/utils.sh` (copiado de `scripts/fedora/lib/`).
 
-3. **Integração**: A detecção é feita pelo bashln-tui existente através de `resolveScriptsDir()` em `cmd/bashln-tui/main.go`.
+3. **Integração**: A detecção é feita pelo pomo-tui existente através de `resolveScriptsDir()` em `cmd/pomo-tui/main.go`.
 
 ### Estrutura de Diretorios Atual
 
@@ -546,7 +546,7 @@ scripts/
 
 - `lib/utils.sh` criado em cada variante (copiado de `scripts/fedora/lib/utils.sh`)
 - `install.sh` corrigido: variável `$variant` agora extraída do nome do diretório (remove prefixo `fedora-atomic-`)
-- Funções `detectSystemDistro()` e `detectSystemVariant()` refatoradas em helper compartilhado `getOSReleaseValue()` em `cmd/bashln-tui/main.go`
+- Funções `detectSystemDistro()` e `detectSystemVariant()` refatoradas em helper compartilhado `getOSReleaseValue()` em `cmd/pomo-tui/main.go`
 - Diretórios `assets/` vazios removidos de todas as variantes
 
 ### Proximos Passos Planeados (Conforme Blueprint Original)
@@ -562,5 +562,5 @@ A implementação atual representa a "Fase 1: Fundação". Os próximos passos i
 - **~70 scripts de instalacao** no directorio assets (Arch)
 - **~40 scripts de instalacao** no directorio assets (Ubuntu/Pop!_OS)
 - **5 distribuicoes suportadas**: Arch, Ubuntu, Fedora, Fedora Atomic, Ubuntu WSL
-- **1 implementacao TUI em Go**: cmd/bashln-tui (principal)
+- **1 implementacao TUI em Go**: cmd/pomo-tui (principal)
 - **Planejado**: fedora-atomic-tui (nova TUI para Fedora Atomic)

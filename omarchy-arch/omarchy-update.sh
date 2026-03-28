@@ -6,12 +6,9 @@ set -euo pipefail
 #  - Atualizar o sistema somente quando os pacotes aparecerem no repo Omarchy
 #  - Evitar updates muito recentes do Arch
 
-# 1. Sincroniza todos os repositórios, incluindo Omarchy
-echo "[OmarchyUpdater] Sincronizando bancos de dados..."
-sudo pacman -Sy --noconfirm
-
-# 2. Verifica atualizações disponíveis
-UPDATES=$(pacman -Qu || true)
+# 1. Verifica atualizações pendentes sem forçar sincronização parcial
+echo "[OmarchyUpdater] Verificando atualizações pendentes..."
+UPDATES=$(pacman -Qu 2>/dev/null || true)
 
 if [ -z "$UPDATES" ]; then
   echo "[OmarchyUpdater] Nenhuma atualização disponível no momento."
@@ -22,7 +19,7 @@ echo "[OmarchyUpdater] Atualizações encontradas:"
 echo "$UPDATES"
 echo
 
-# 3. Atualiza tudo — Omarchy determina o ritmo
+# 2. Atualiza tudo de forma consistente
 echo "[OmarchyUpdater] Aplicando atualização segura (via Omarchy + Arch)..."
 sudo pacman -Syu --noconfirm
 

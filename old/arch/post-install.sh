@@ -44,10 +44,10 @@ fi
 # Zsh plugins
 # fzf-zsh-plugin: O pacote 'fzf-zsh-plugin' foi removido da instalação via pacman
 # pois o plugin em si é clonado via git aqui. O 'fzf' já deve vir com base-devel ou ser instalado separadamente se não for.
-git clone https://github.com/unixorn/fzf-zsh-plugin ~/.oh-my-zsh/custom/plugins/fzf-zsh-plugin || echo "fzf-zsh-plugin já existe, pulando clone."
-git clone https://github.com/zsh-users/zsh-autosuggestions ${ZSH_CUSTOM:-~/.oh-my-zsh/custom}/plugins/zsh-autosuggestions || echo "zsh-autosuggestions já existe, pulando clone."
-git clone https://github.com/zsh-users/zsh-completions ${ZSH_CUSTOM:-~/.oh-my-zsh/custom}/plugins/zsh-completions || echo "zsh-completions já existe, pulando clone."
-git clone https://github.com/zsh-users/zsh-syntax-highlighting.git ${ZSH_CUSTOM:-~/.oh-my-zsh/custom}/plugins/zsh-syntax-highlighting || echo "zsh-syntax-highlighting já existe, pulando clone."
+git clone --depth=1 https://github.com/unixorn/fzf-zsh-plugin ~/.oh-my-zsh/custom/plugins/fzf-zsh-plugin || echo "fzf-zsh-plugin já existe, pulando clone."
+git clone --depth=1 https://github.com/zsh-users/zsh-autosuggestions ${ZSH_CUSTOM:-~/.oh-my-zsh/custom}/plugins/zsh-autosuggestions || echo "zsh-autosuggestions já existe, pulando clone."
+git clone --depth=1 https://github.com/zsh-users/zsh-completions ${ZSH_CUSTOM:-~/.oh-my-zsh/custom}/plugins/zsh-completions || echo "zsh-completions já existe, pulando clone."
+git clone --depth=1 https://github.com/zsh-users/zsh-syntax-highlighting.git ${ZSH_CUSTOM:-~/.oh-my-zsh/custom}/plugins/zsh-syntax-highlighting || echo "zsh-syntax-highlighting já existe, pulando clone."
 git clone --depth=1 https://github.com/romkatv/powerlevel10k.git "${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}/themes/powerlevel10k" || echo "powerlevel10k já existe, pulando clone."
 
 echo -e "\n[+] Instalando suporte AUR (yay)...\n"
@@ -55,7 +55,7 @@ if ! command -v yay &>/dev/null; then
   echo "Parece que o 'yay' não está instalado. Tentando instalá-lo..."
   # A instalação do yay exige a compilação.
   # Primeiro, garanta que base-devel (já está na lista de pacotes essenciais) esteja instalado.
-  # git clone https://aur.archlinux.org/yay.git
+  # git clone --depth=1 https://aur.archlinux.org/yay.git
   # cd yay
   # makepkg -si --noconfirm
   # cd ..
@@ -65,7 +65,7 @@ if ! command -v yay &>/dev/null; then
   # Por enquanto, vou manter a sua linha original e adicionar um aviso.
   echo "[!] ATENÇÃO: A instalação de 'yay' via 'pamac' é comum em Manjaro. Se você está usando Arch Linux puro,"
   echo "    pode ser necessário instalar 'yay' manualmente compilando-o do AUR."
-  echo "    (git clone https://aur.archlinux.org/yay.git && cd paru && makepkg -si)"
+  echo "    (git clone --depth=1 https://aur.archlinux.org/yay.git && cd paru && makepkg -si)"
   yay -S yay --noconfirm || echo "[!] Falha ao instalar paru via pamac. Tente manualmente ou use o método do AUR."
 else
   echo "yay já está instalado."
