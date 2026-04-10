@@ -72,6 +72,12 @@ func TestResolveScriptsDirWithVariant(t *testing.T) {
 			wantScriptDir: "scripts/fedora",
 		},
 		{
+			name:          "fedora workstation",
+			distroID:      "fedora",
+			variantID:     "workstation",
+			wantScriptDir: "scripts/fedora",
+		},
+		{
 			name:          "arch linux",
 			distroID:      "arch",
 			variantID:     "",
@@ -100,9 +106,10 @@ func resolveDistroToScriptDir(distroID, variantID string) string {
 	var scriptDir string
 	switch distroID {
 	case "fedora", "rhel", "centos", "rocky", "almalinux":
-		if variantID != "" {
+		switch variantID {
+		case "bazzite", "silverblue", "kinoite", "nordic":
 			scriptDir = "scripts/fedora-atomic"
-		} else {
+		default:
 			scriptDir = "scripts/fedora"
 		}
 	case "ubuntu", "debian", "linuxmint", "pop":

@@ -142,10 +142,11 @@ func resolveScriptsDir(root string) (string, error) {
 	var scriptDir string
 	switch distroID {
 	case "fedora", "rhel", "centos", "rocky", "almalinux":
-		// Check for Fedora Atomic variants - all map to fedora-atomic which has assets/
-		if variantID != "" {
+		// Check for known Fedora Atomic variants
+		switch variantID {
+		case "bazzite", "silverblue", "kinoite", "nordic":
 			scriptDir = "scripts/fedora-atomic"
-		} else {
+		default:
 			scriptDir = "scripts/fedora"
 		}
 	case "ubuntu", "debian", "linuxmint", "pop":
